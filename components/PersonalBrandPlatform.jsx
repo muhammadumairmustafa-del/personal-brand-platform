@@ -54,6 +54,10 @@ export default function PersonalBrandPlatform() {
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Close the mobile drawer whenever the user navigates to a new view
+  useEffect(() => { setMobileNavOpen(false); }, [activeView]);
 
   // Load all data
   useEffect(() => {
@@ -131,18 +135,42 @@ export default function PersonalBrandPlatform() {
   return (
     <div className="min-h-screen bg-stone-50" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
       <GlobalStyles />
-      
-      <Sidebar 
-        activeView={activeView} 
-        setActiveView={setActiveView} 
+
+      {/* Mobile top bar — only visible on small screens */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-stone-50/95 backdrop-blur-sm border-b border-stone-200 px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Open navigation"
+          className="p-2 -ml-2 hover:bg-stone-100"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        </button>
+        <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500">Brand OS</div>
+        <div className="w-9" />{/* spacer for balance */}
+      </div>
+
+      {/* Mobile drawer backdrop */}
+      {mobileNavOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-stone-950/60 backdrop-blur-sm z-40"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <Sidebar
+        activeView={activeView}
+        setActiveView={setActiveView}
         profile={profile}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
         stories={stories}
         contentPieces={contentPieces}
+        mobileNavOpen={mobileNavOpen}
+        setMobileNavOpen={setMobileNavOpen}
       />
-      
-      <main className={`${sidebarCollapsed ? 'ml-20' : 'ml-72'} min-h-screen transition-all duration-300`}>
+
+      <main className={`${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'} ml-0 pt-14 lg:pt-0 min-h-screen transition-all duration-300`}>
         {activeView === 'dashboard' && (
           <Dashboard
             profile={profile} stories={stories} contentPieces={contentPieces}
@@ -164,13 +192,13 @@ export default function PersonalBrandPlatform() {
           <OutboundPipeline outbound={outbound} saveOutbound={saveOutbound} profile={profile} stories={stories} />
         )}
         {activeView === 'repurpose' && (
-          <RepurposingStudio stories={stories} contentPieces={contentPieces} saveContent={saveContent} profile={profile} icps={icps} />
+          <RepurposingStudio stories={stories} contentPieces={contentPieces} saveContent={saveContent} profile={profile} icps={icps} setActiveView={setActiveView} />
         )}
         {activeView === 'swipe' && (
           <SwipeFile swipeFile={swipeFile} saveSwipeFile={saveSwipeFile} profile={profile} />
         )}
         {activeView === 'newsletter' && (
-          <NewsletterStudio newsletters={newsletters} saveNewsletters={saveNewsletters} stories={stories} profile={profile} />
+          <NewsletterStudio newsletters={newsletters} saveNewsletters={saveNewsletters} stories={stories} profile={profile} setActiveView={setActiveView} />
         )}
         {activeView === 'proof' && (
           <ProofVault proof={proof} saveProof={saveProof} contentPieces={contentPieces} profile={profile} />
@@ -206,9 +234,10 @@ export default function PersonalBrandPlatform() {
           <HookLibrary hooks={hooks} saveHooks={saveHooks} profile={profile} />
         )}
         {activeView === 'content' && (
-          <ContentEngine 
-            contentPieces={contentPieces} saveContent={saveContent} 
+          <ContentEngine
+            contentPieces={contentPieces} saveContent={saveContent}
             stories={stories} profile={profile} hooks={hooks} icps={icps}
+            setActiveView={setActiveView}
           />
         )}
         {activeView === 'batch' && (
@@ -402,7 +431,7 @@ function OnboardWelcome() {
       <p className="text-base text-stone-700 leading-relaxed font-sans">
         The goal isn't celebrity. It's extracting the lessons from <em>your</em> lived experience and turning them into a content engine that works 24/7 — even as AI-generated content floods the feed.
       </p>
-      <div className="grid grid-cols-3 gap-3 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-8">
         {[
           { icon: BookOpen, label: 'Story Vault', desc: 'Your unique stories' },
           { icon: Crosshair, label: 'ICP Lab', desc: 'Audience research' },
@@ -585,7 +614,7 @@ function OnboardVoice({ data, update }) {
   return (
     <div className="space-y-6">
       <Field label="Your voice archetype">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             { v: 'analytical', label: 'Analytical & frameworks-driven', desc: 'Like , Lex Fridman' },
             { v: 'storyteller', label: 'Story-led & emotional', desc: 'Like Steven Bartlett' },
@@ -667,7 +696,7 @@ function OnboardPlatforms({ data, update }) {
   return (
     <div className="space-y-6">
       <Field label="Where will you publish? (pick all that apply)">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {platforms.map(p => {
             const sel = data.platforms.includes(p.v);
             return (
@@ -701,7 +730,7 @@ function OnboardPlatforms({ data, update }) {
         </Field>
       )}
       <Field label="Posting cadence">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {[
             { v: 'three_per_week', label: '3/week', desc: 'Mon · Wed · Fri' },
             { v: 'daily', label: 'Daily', desc: '\'s recommendation' },
@@ -837,6 +866,36 @@ function ChipInput({ label, items = [], setItems, suggestions = [], accent = 'st
   );
 }
 
+// Parse AI responses defensively. The model sometimes wraps JSON in markdown
+// (```json ... ```), sometimes returns prose around it, sometimes returns
+// truncated output. This helper handles all three and dispatches a toast on
+// failure so the user knows what happened instead of seeing a frozen button.
+function safeAIParse(text) {
+  if (!text || typeof text !== 'string') {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: 'AI returned an empty response. Try again.' } }));
+    }
+    throw new Error('AI returned empty');
+  }
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  // If the response contains prose around JSON, try to extract the first {...} or [...] block.
+  let candidate = cleaned;
+  if (!candidate.startsWith('{') && !candidate.startsWith('[')) {
+    const objMatch = candidate.match(/\{[\s\S]*\}/);
+    const arrMatch = candidate.match(/\[[\s\S]*\]/);
+    if (objMatch) candidate = objMatch[0];
+    else if (arrMatch) candidate = arrMatch[0];
+  }
+  try {
+    return JSON.parse(candidate);
+  } catch (e) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: 'AI response was malformed. Try regenerating.' } }));
+    }
+    throw e;
+  }
+}
+
 function Pill({ children, color = 'stone' }) {
   const colors = {
     stone: 'bg-stone-100 text-stone-700 border-stone-200',
@@ -893,7 +952,7 @@ function EmptyState({ icon: Icon, title, description, action }) {
 }
 
 // ============= SIDEBAR =============
-function Sidebar({ activeView, setActiveView, profile, collapsed, setCollapsed, stories, contentPieces }) {
+function Sidebar({ activeView, setActiveView, profile, collapsed, setCollapsed, stories, contentPieces, mobileNavOpen, setMobileNavOpen }) {
   const groups = [
     {
       label: 'Overview',
@@ -967,14 +1026,29 @@ function Sidebar({ activeView, setActiveView, profile, collapsed, setCollapsed, 
   const dayLabel = { 1: 'Pain Monday', 2: 'Reflection', 3: 'News Wednesday', 4: 'Reflection', 5: 'Prize Friday', 6: 'Weekend', 0: 'Weekend' }[day];
 
   return (
-    <aside className={`fixed left-0 top-0 bottom-0 ${collapsed ? 'w-20' : 'w-72'} bg-stone-950 text-stone-100 flex flex-col z-40 transition-all duration-300`}>
+    <aside className={`fixed left-0 top-0 bottom-0 ${collapsed ? 'lg:w-20' : 'lg:w-72'} w-72 bg-stone-950 text-stone-100 flex flex-col z-50 lg:z-40 transition-all duration-300 ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');`}</style>
       
       {/* Header */}
       <div className={`${collapsed ? 'p-4' : 'p-6'} border-b border-stone-800`}>
         <div className="flex items-center justify-between mb-1">
           {!collapsed && <div className="font-mono text-[10px] tracking-[0.3em] text-stone-500 uppercase">Brand OS</div>}
-          <button onClick={() => setCollapsed(!collapsed)} className="p-1 hover:bg-stone-800 ml-auto">
+          {/* Mobile close */}
+          {setMobileNavOpen && (
+            <button
+              onClick={() => setMobileNavOpen(false)}
+              aria-label="Close navigation"
+              className="lg:hidden p-1 hover:bg-stone-800 ml-auto mr-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          {/* Desktop collapse */}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="p-1 hover:bg-stone-800 hidden lg:block"
+          >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
@@ -1095,7 +1169,7 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       {/* Hero */}
       <div className="mb-10 animate-fadeIn">
         <div className="font-mono text-[10px] tracking-[0.3em] text-stone-500 uppercase mb-3">
@@ -1110,7 +1184,7 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
       </div>
 
       {/* Top stats row */}
-      <div className="grid grid-cols-5 gap-4 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
         <StatCard label="Brand Build" value={`${overall}%`} hint={stageMessages[stage].title} icon={Activity} />
         <StatCard label="Stories" value={stories.length} hint={`Goal: 10+`} icon={BookOpen} />
         <StatCard label="Posts Created" value={contentPieces.length} hint={`${postedCount} published`} icon={Sparkles} />
@@ -1119,7 +1193,7 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
       </div>
 
       {/* Hero card + identity */}
-      <div className="grid grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
         {/* Today's action - larger */}
         <div className="col-span-2 bg-stone-950 text-stone-50 p-10 relative overflow-hidden grain">
           <div className="absolute top-0 right-0 w-96 h-96 bg-stone-900 rounded-full -translate-y-1/2 translate-x-1/2 opacity-60" />
@@ -1232,7 +1306,7 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
             {overall}<span className="text-stone-300 text-5xl">%</span>
           </div>
         </div>
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
             { k: 'profileScore', label: 'Profile', view: 'profile', desc: 'Identity defined' },
             { k: 'icpScore', label: 'ICPs', view: 'icp', desc: `${icps.length} researched` },
@@ -1301,7 +1375,7 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
             <div className="font-display text-3xl font-light text-stone-900">Six systems · One brand</div>
           </div>
         </div>
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
             { id: 'dna', icon: Fingerprint, label: 'Brand DNA', value: (() => { let s=0; if(dna.origin?.moments?.length>=3)s+=17; if(dna.values?.core?.length>=3)s+=17; if(dna.archetype?.primary)s+=17; if(dna.voice?.fingerprint)s+=17; if(dna.timeline?.events?.length>=5)s+=16; if(dna.manifesto?.manifesto)s+=16; return s; })(), unit: '%', sub: 'Decoded' },
             { id: 'mining', icon: Camera, label: 'Photo Mining', value: Object.keys(photoMining||{}).length, unit: '/60', sub: 'Months mined' },
@@ -1323,7 +1397,7 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
       {/* Three step framework */}
       <div className="mb-10">
         <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-4">The Three-Step Framework</div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             { num: '01', title: 'Discover Stories', desc: 'Pause-Reflect-Document. Mine your last 60 months for stories with lessons.', cta: 'Story Vault', view: 'stories', progress: completion.storiesScore, supporting: 'AI Coach · Hook Library' },
             { num: '02', title: 'Test & Get Traction', desc: 'Pain / Prize / News short-form. Long-form processes. DM call-to-action.', cta: 'Content Engine', view: 'content', progress: completion.contentScore, supporting: 'Batch Workflow · Calendar' },
@@ -1346,7 +1420,7 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
       </div>
 
       {/* Recent activity grid */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white border border-stone-200 p-7">
           <div className="flex items-center justify-between mb-4">
             <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500">Latest Stories</div>
@@ -1440,7 +1514,7 @@ function StoryVault({ stories, saveStories, profile }) {
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Step One · Source Material"
         title="Story Vault"
@@ -1477,7 +1551,7 @@ function StoryVault({ stories, saveStories, profile }) {
       )}
 
       {/* Stats row */}
-      <div className="grid grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         <StatCard label="Total Stories" value={stats.total} hint="Goal: 10+" icon={BookOpen} />
         <StatCard label="Pain" value={stats.pain} hint="Monday hooks" icon={AlertCircle} />
         <StatCard label="Prize" value={stats.prize} hint="Friday hooks" icon={Trophy} />
@@ -1532,7 +1606,7 @@ function StoryVault({ stories, saveStories, profile }) {
         <div className="bg-amber-50 border border-amber-200 p-6 mb-6">
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-amber-800 mb-2">Story Prompts</div>
           <div className="font-display text-xl font-light text-stone-900 mb-4">Try answering one of these to unlock a story</div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {[
               "When did you last get a remarkable result and how did you do it?",
               "What's a deal/project that almost died but came back?",
@@ -1584,7 +1658,7 @@ function StoryVault({ stories, saveStories, profile }) {
       )}
 
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map(story => (
             <StoryCard
               key={story.id}
@@ -1628,8 +1702,8 @@ function StoryCard({ story, onEdit, onDelete, onUpdate }) {
           {story.timesUsed > 0 && <Pill>used {story.timesUsed}x</Pill>}
         </div>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-          <button onClick={onEdit} className="p-1.5 hover:bg-stone-100"><Edit3 className="w-3.5 h-3.5 text-stone-600" /></button>
-          <button onClick={onDelete} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
+          <button aria-label="Edit" onClick={onEdit} className="p-1.5 hover:bg-stone-100"><Edit3 className="w-3.5 h-3.5 text-stone-600" /></button>
+          <button aria-label="Delete" onClick={onDelete} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
         </div>
       </div>
       <div className="font-display text-xl text-stone-900 leading-snug mb-3 font-medium">{story.title}</div>
@@ -1684,8 +1758,8 @@ function StoryRow({ story, onEdit, onDelete }) {
         {[1,2,3,4,5].map(n => <Star key={n} className={`w-3 h-3 ${n <= (story.rating || 0) ? 'text-amber-500 fill-current' : 'text-stone-200 fill-current'}`} />)}
       </div>
       <div className="flex gap-1">
-        <button onClick={onEdit} className="p-1.5 hover:bg-stone-100"><Edit3 className="w-3.5 h-3.5 text-stone-600" /></button>
-        <button onClick={onDelete} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
+        <button aria-label="Edit" onClick={onEdit} className="p-1.5 hover:bg-stone-100"><Edit3 className="w-3.5 h-3.5 text-stone-600" /></button>
+        <button aria-label="Delete" onClick={onDelete} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
       </div>
     </div>
   );
@@ -1741,7 +1815,7 @@ Help refine this story. Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       setS({ ...s, 
         title: parsed.refinedTitle, 
         context: parsed.context, 
@@ -1762,13 +1836,13 @@ Help refine this story. Return ONLY valid JSON:
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-1">{s.id ? 'Editing story' : 'New story'}</div>
           <div className="font-display text-3xl font-light">{s.id ? 'Refine' : 'Capture'} a story</div>
         </div>
-        <button onClick={onCancel}><X className="w-5 h-5" /></button>
+        <button aria-label="Close" onClick={onCancel}><X className="w-5 h-5" /></button>
       </div>
 
       {/* Framework selector */}
       <div className="mb-6">
         <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Story framework</div>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           {Object.entries(frameworks).map(([k, v]) => (
             <button
               key={k}
@@ -1789,7 +1863,7 @@ Help refine this story. Return ONLY valid JSON:
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
             <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Month</label>
@@ -1799,7 +1873,7 @@ Help refine this story. Return ONLY valid JSON:
           </div>
           <div>
             <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Category</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
               {[
                 { v: 'pain', label: 'Pain', desc: 'A struggle' },
                 { v: 'prize', label: 'Prize', desc: 'A win' },
@@ -1930,14 +2004,14 @@ Build a deep, specific ICP. Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       saveIcps([{ ...parsed, id: Date.now(), createdAt: new Date().toISOString() }, ...icps]);
     } catch (e) { console.error(e); }
     setGenerating(false);
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Foundation · Audience Research"
         title="ICP Lab"
@@ -1963,7 +2037,7 @@ Build a deep, specific ICP. Return ONLY valid JSON:
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="ICPs Built" value={icps.length} hint="Goal: 1-3 deep" icon={Crosshair} />
         <StatCard label="Total Pains" value={icps.reduce((sum, i) => sum + (i.topPains?.length || 0), 0)} hint="Hook material" icon={AlertCircle} />
         <StatCard label="Vocabulary Words" value={icps.reduce((sum, i) => sum + (i.vocabulary?.length || 0), 0)} hint="Their language" icon={Quote} />
@@ -2051,12 +2125,12 @@ function ICPCard({ icp, onEdit, onDelete }) {
             <div className="font-sans text-sm text-stone-600 mt-1">{icp.title}</div>
           </div>
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={onEdit} className="p-2 hover:bg-stone-100"><Edit3 className="w-4 h-4 text-stone-600" /></button>
-            <button onClick={onDelete} className="p-2 hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-600" /></button>
+            <button aria-label="Edit" onClick={onEdit} className="p-2 hover:bg-stone-100"><Edit3 className="w-4 h-4 text-stone-600" /></button>
+            <button aria-label="Delete" onClick={onDelete} className="p-2 hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-600" /></button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-400 mb-1.5">Demographics</div>
             <div className="text-sm text-stone-700 font-sans leading-relaxed">{icp.demographics}</div>
@@ -2067,7 +2141,7 @@ function ICPCard({ icp, onEdit, onDelete }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5">
           <div className="bg-red-50 border border-red-200 p-4">
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-red-800 font-semibold mb-2">Top Pains</div>
             <ul className="space-y-1.5">
@@ -2101,7 +2175,7 @@ function ICPCard({ icp, onEdit, onDelete }) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-6 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5">
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-400 mb-2">Vocabulary they use</div>
                 <div className="flex flex-wrap gap-1.5">
@@ -2116,7 +2190,7 @@ function ICPCard({ icp, onEdit, onDelete }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5">
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-400 mb-2">Watering holes</div>
                 <ul className="space-y-1">
@@ -2182,10 +2256,10 @@ function ICPForm({ icp, onSave, onCancel }) {
     <div className="bg-stone-950 text-stone-50 p-8 mb-6 animate-slideIn">
       <div className="flex justify-between items-center mb-6">
         <div className="font-display text-3xl font-light">{s.id ? 'Edit ICP' : 'New ICP'}</div>
-        <button onClick={onCancel}><X className="w-5 h-5" /></button>
+        <button aria-label="Close" onClick={onCancel}><X className="w-5 h-5" /></button>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <Field label="Short name (e.g. 'BD Lead at Tier-1 Telco')">
             <input value={s.name} onChange={e => setS({ ...s, name: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
@@ -2312,7 +2386,7 @@ Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       const newHooks = parsed.hooks.map(h => ({ ...h, id: Date.now() + Math.random(), category: cat, custom: true, createdAt: new Date().toISOString() }));
       saveHooks([...newHooks, ...hooks]);
     } catch (e) { console.error(e); }
@@ -2326,7 +2400,7 @@ Return ONLY valid JSON:
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Source Material · Hook Library"
         title="Hook Library"
@@ -2404,7 +2478,7 @@ Return ONLY valid JSON:
           description={view === 'mine' ? 'Generate AI hooks tailored to your voice using the panel above.' : 'Try adjusting your filter or search.'}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map(hook => (
             <div key={hook.id} className="bg-white border border-stone-200 p-5 hover:border-stone-400 transition-all group">
               <div className="flex items-center justify-between mb-3">
@@ -2441,7 +2515,7 @@ Return ONLY valid JSON:
 }
 
 // ============= CONTENT ENGINE =============
-function ContentEngine({ contentPieces, saveContent, stories, profile, hooks, icps }) {
+function ContentEngine({ contentPieces, saveContent, stories, profile, hooks, icps, setActiveView }) {
   const [activeTab, setActiveTab] = useState('generate');
   const [generatedContent, setGeneratedContent] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -2642,7 +2716,7 @@ Return ONLY valid JSON:
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Step Two · Production"
         title="Content Engine"
@@ -2665,9 +2739,15 @@ Return ONLY valid JSON:
           {stories.length === 0 ? (
             <div className="bg-amber-50 border border-amber-200 p-6 flex items-start gap-4">
               <AlertCircle className="w-5 h-5 text-amber-700 mt-0.5 flex-shrink-0" />
-              <div>
+              <div className="flex-1">
                 <div className="font-medium text-amber-900 mb-1">Add stories first</div>
-                <div className="font-sans text-sm text-amber-800">The content engine pulls from your Story Vault. Capture at least 3 stories before generating.</div>
+                <div className="font-sans text-sm text-amber-800 mb-3">The content engine pulls from your Story Vault. Capture at least one story — voice or typed — before generating content.</div>
+                <button
+                  onClick={() => setActiveView && setActiveView('stories')}
+                  className="px-4 py-2 bg-stone-900 text-stone-50 font-sans text-xs hover:bg-stone-800 inline-flex items-center gap-2"
+                >
+                  <BookOpen className="w-3.5 h-3.5" /> Go to Story Vault
+                </button>
               </div>
             </div>
           ) : (
@@ -2678,7 +2758,7 @@ Return ONLY valid JSON:
                   <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500">1. Pick a story</div>
                   {selectedStory && <span className="font-mono text-[10px] text-emerald-700">✓ Selected</span>}
                 </div>
-                <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto">
                   {stories.map(s => (
                     <button key={s.id} onClick={() => setSelectedStory(s)} className={`p-3 text-left border transition-all ${selectedStory?.id === s.id ? 'border-stone-900 bg-stone-900 text-stone-50' : 'border-stone-200 hover:border-stone-400 bg-stone-50'}`}>
                       <div className={`font-mono text-[10px] uppercase tracking-wider mb-1 ${selectedStory?.id === s.id ? 'text-stone-400' : 'text-stone-500'}`}>{s.month} · {s.category}</div>
@@ -2695,7 +2775,7 @@ Return ONLY valid JSON:
                     <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500">2. Target an ICP <span className="text-stone-400">(optional but recommended)</span></div>
                     {selectedICP && <button onClick={() => setSelectedICP(null)} className="font-sans text-xs text-stone-500 hover:text-stone-900">Clear</button>}
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                     {icps.map(icp => (
                       <button key={icp.id} onClick={() => setSelectedICP(icp)} className={`p-3 text-left border transition-all ${selectedICP?.id === icp.id ? 'border-stone-900 bg-stone-900 text-stone-50' : 'border-stone-200 hover:border-stone-400 bg-stone-50'}`}>
                         <Crosshair className="w-3.5 h-3.5 mb-1.5" />
@@ -2710,7 +2790,7 @@ Return ONLY valid JSON:
               {/* Step 3: Angle */}
               <div className="bg-white border border-stone-200 p-6">
                 <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">{icps.length > 0 ? '3' : '2'}. Pick angle</div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {[
                     { v: 'pain', label: 'Pain', icon: AlertCircle, color: 'red', desc: 'Problem hook · Mondays' },
                     { v: 'prize', label: 'Prize', icon: Trophy, color: 'emerald', desc: 'Outcome hook · Fridays' },
@@ -2726,10 +2806,10 @@ Return ONLY valid JSON:
               </div>
 
               {/* Step 4: Platform & format */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white border border-stone-200 p-6">
                   <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">{icps.length > 0 ? '4a' : '3a'}. Platform</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                     {Object.keys(formats).filter(p => profile.platforms?.includes(p) || p === 'LinkedIn').map(p => (
                       <button key={p} onClick={() => { setPlatform(p); setFormat(formats[p][0].v); }} className={`px-3 py-2.5 text-sm border ${platform === p ? 'border-stone-900 bg-stone-900 text-stone-50' : 'border-stone-200 hover:border-stone-400'}`}>
                         {p}
@@ -2739,7 +2819,7 @@ Return ONLY valid JSON:
                 </div>
                 <div className="bg-white border border-stone-200 p-6">
                   <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">{icps.length > 0 ? '4b' : '3b'}. Format</div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {availableFormats.map(f => (
                       <button key={f.v} onClick={() => setFormat(f.v)} className={`p-2.5 text-left border ${format === f.v ? 'border-stone-900 bg-stone-900 text-stone-50' : 'border-stone-200 hover:border-stone-400'}`}>
                         <div className="flex items-center gap-2">
@@ -2915,7 +2995,7 @@ function ContentLibraryItem({ piece, onCopy, copied, onDelete, onUpdate }) {
           <button onClick={() => onCopy(`${piece.hook}\n\n${piece.body}\n\n${piece.cta || ''}`)} className="p-1.5 hover:bg-stone-100">
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-stone-600" />}
           </button>
-          <button onClick={onDelete} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
+          <button aria-label="Delete" onClick={onDelete} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
         </div>
       </div>
       <div className="font-sans text-xs text-stone-500 mb-2">From: {piece.storyTitle}</div>
@@ -3023,7 +3103,7 @@ Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       setBatchData({ ...batchData, generated: parsed });
       setStep(4);
     } catch (e) { console.error(e); }
@@ -3088,7 +3168,7 @@ Return ONLY valid JSON:
   );
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Production · Batch Workflow"
         title="Plan a week in 30 minutes"
@@ -3128,7 +3208,7 @@ Return ONLY valid JSON:
                 <div className="font-display text-2xl font-light text-stone-900 mb-1">Pick 3 stories</div>
                 <div className="font-sans text-sm text-stone-600 mb-5">One pain, one news-tied, one prize. They'll become your Monday/Wednesday/Friday posts.</div>
                 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[
                     { key: 'painStory', label: 'Pain Monday', cat: 'pain', color: 'red', icon: AlertCircle },
                     { key: 'newsStory', label: 'News Wednesday', cat: 'news', color: 'amber', icon: Newspaper },
@@ -3181,10 +3261,10 @@ Return ONLY valid JSON:
             <div className="bg-white border border-stone-200 p-6">
               <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-2">Step 2</div>
               <div className="font-display text-2xl font-light text-stone-900 mb-5">Platform & format for the whole batch</div>
-              <div className="grid grid-cols-2 gap-4 mb-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Platform</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                     {['LinkedIn', 'X', 'Newsletter', 'Instagram', 'YouTube', 'Podcast'].filter(p => profile.platforms?.includes(p) || p === 'LinkedIn').map(p => (
                       <button key={p} onClick={() => setBatchData({ ...batchData, platform: p })} className={`px-3 py-2.5 text-sm border ${batchData.platform === p ? 'border-stone-900 bg-stone-900 text-stone-50' : 'border-stone-200'}`}>
                         {p}
@@ -3194,7 +3274,7 @@ Return ONLY valid JSON:
                 </div>
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Format</div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {['post', 'carousel', 'thread', 'newsletter'].map(f => (
                       <button key={f} onClick={() => setBatchData({ ...batchData, format: f })} className={`px-3 py-2.5 text-sm border ${batchData.format === f ? 'border-stone-900 bg-stone-900 text-stone-50' : 'border-stone-200'}`}>
                         {f}
@@ -3255,7 +3335,7 @@ Return ONLY valid JSON:
                 <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-amber-800 mb-1">Week Theme</div>
                 <div className="font-display text-xl text-stone-900 italic">"{batchData.generated.weekTheme}"</div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {batchData.generated.posts.map((post, i) => {
                   const colors = { pain: 'border-l-red-700', news: 'border-l-amber-700', prize: 'border-l-emerald-700' };
                   return (
@@ -3382,7 +3462,7 @@ function FunnelBuilder({ funnels, saveFunnels, profile }) {
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Step Three · Distribution"
         title="Funnel Builder"
@@ -3398,7 +3478,7 @@ function FunnelBuilder({ funnels, saveFunnels, profile }) {
       {funnels.length === 0 && (
         <div className="mb-8">
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">Start with a template</div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {templates.map(t => (
               <div key={t.id} className="bg-white border border-stone-200 p-6 hover:border-stone-900 transition-all">
                 <div className="font-display text-xl font-medium text-stone-900 mb-2">{t.name}</div>
@@ -3456,8 +3536,8 @@ function FunnelCard({ funnel, onEdit, onDelete }) {
           <div className="font-sans text-sm text-stone-600 mt-1">{funnel.description}</div>
         </div>
         <div className="flex gap-2">
-          <button onClick={onEdit} className="p-2 hover:bg-stone-100"><Edit3 className="w-4 h-4 text-stone-600" /></button>
-          <button onClick={onDelete} className="p-2 hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-600" /></button>
+          <button aria-label="Edit" onClick={onEdit} className="p-2 hover:bg-stone-100"><Edit3 className="w-4 h-4 text-stone-600" /></button>
+          <button aria-label="Delete" onClick={onDelete} className="p-2 hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-600" /></button>
         </div>
       </div>
 
@@ -3485,7 +3565,7 @@ function FunnelForm({ funnel, onSave, onCancel }) {
     <div className="bg-stone-950 text-stone-50 p-8 mb-6 animate-slideIn">
       <div className="flex justify-between items-center mb-6">
         <div className="font-display text-3xl font-light">{f.id ? 'Edit funnel' : 'New funnel'}</div>
-        <button onClick={onCancel}><X className="w-5 h-5" /></button>
+        <button aria-label="Close" onClick={onCancel}><X className="w-5 h-5" /></button>
       </div>
       <div className="space-y-4 mb-6">
         <Field label="Name">
@@ -3590,7 +3670,7 @@ function ContentCalendar({ calendar, saveCalendar, contentPieces, saveContent, a
   const draftPieces = contentPieces.filter(p => !Object.values(calendar).includes(p.id));
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Distribution · Content Calendar"
         title="The Cadence"
@@ -3598,7 +3678,7 @@ function ContentCalendar({ calendar, saveCalendar, contentPieces, saveContent, a
       />
 
       {/* Top stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="This month scheduled" value={Object.keys(calendar).filter(k => k.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)).length} icon={CalendarDays} />
         <StatCard label="Drafts ready to schedule" value={draftPieces.length} icon={Layers} />
         <StatCard label="Posted this month" value={Object.entries(analytics).filter(([k, v]) => v.posted && k.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)).length} icon={Check} />
@@ -3609,7 +3689,7 @@ function ContentCalendar({ calendar, saveCalendar, contentPieces, saveContent, a
       {upcomingScheduled.length > 0 && (
         <div className="bg-white border border-stone-200 p-6 mb-6">
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-4">Up Next</div>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {upcomingScheduled.map(({ date, piece }) => (
               <div key={date} className="border border-stone-200 p-3">
                 <div className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-2">
@@ -3844,7 +3924,7 @@ function Analytics({ analytics, saveAnalytics, contentPieces, stories, calendar,
   }, [stats.posts, contentPieces, stories]);
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Distribution · Analytics"
         title="What's actually working"
@@ -3883,7 +3963,7 @@ function Analytics({ analytics, saveAnalytics, contentPieces, stories, calendar,
       {view === 'overview' && (
         <div className="space-y-6">
           {/* Top stats */}
-          <div className="grid grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <StatCard label="Posts" value={stats.totalPosts} icon={Sparkles} />
             <StatCard label="Impressions" value={stats.totalImpressions > 1000 ? `${(stats.totalImpressions/1000).toFixed(1)}k` : stats.totalImpressions} icon={Eye} />
             <StatCard label="Likes" value={stats.totalLikes} icon={Heart} />
@@ -3895,7 +3975,7 @@ function Analytics({ analytics, saveAnalytics, contentPieces, stories, calendar,
           {/* By type */}
           <div className="bg-white border border-stone-200 p-7">
             <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-4">Performance by Angle</div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
                 { k: 'pain', label: 'Pain', color: 'red' },
                 { k: 'news', label: 'News', color: 'amber' },
@@ -3909,7 +3989,7 @@ function Analytics({ analytics, saveAnalytics, contentPieces, stories, calendar,
                       <div className="font-display text-2xl font-light text-stone-900">{t.label}</div>
                       <Pill color={t.color === 'emerald' ? 'green' : t.color}>{d.posts} posts</Pill>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                       <div>
                         <div className="font-mono text-[10px] uppercase text-stone-400">Total Eng</div>
                         <div className="font-display text-2xl text-stone-900">{d.eng}</div>
@@ -4006,7 +4086,7 @@ function Analytics({ analytics, saveAnalytics, contentPieces, stories, calendar,
                 </div>
                 
                 {isEditing ? (
-                  <div className="grid grid-cols-5 gap-3 pt-3 border-t border-stone-200">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-3 border-t border-stone-200">
                     {['impressions', 'likes', 'comments', 'shares', 'dms'].map(metric => (
                       <div key={metric}>
                         <div className="font-mono text-[10px] uppercase text-stone-500 mb-1">{metric}</div>
@@ -4020,7 +4100,7 @@ function Analytics({ analytics, saveAnalytics, contentPieces, stories, calendar,
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-5 gap-4 pt-3 border-t border-stone-200">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 pt-3 border-t border-stone-200">
                     <div>
                       <div className="font-mono text-[10px] uppercase text-stone-400">Impressions</div>
                       <div className="font-display text-xl text-stone-900">{post.impressions || 0}</div>
@@ -4201,7 +4281,7 @@ Otherwise just keep asking great questions. Be human, warm, but sharp. Push them
   };
 
   return (
-    <div className="p-12 max-w-5xl">
+    <div className="p-4 md:p-8 lg:p-12 max-w-5xl">
       <SectionHeader
         kicker="Source Material · AI Coach"
         title="Story Coach"
@@ -4241,7 +4321,7 @@ Otherwise just keep asking great questions. Be human, warm, but sharp. Push them
                 <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-amber-800">Story Extracted</div>
               </div>
               <div className="font-display text-xl text-stone-900 mb-2">{extractedStory.title}</div>
-              <div className="grid grid-cols-3 gap-3 mb-3 text-xs font-sans">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3 text-xs font-sans">
                 <div><span className="text-stone-500 font-mono uppercase tracking-wider">Cat:</span> {extractedStory.category}</div>
                 <div><span className="text-stone-500 font-mono uppercase tracking-wider">When:</span> {extractedStory.month}</div>
                 <div><span className="text-stone-500 font-mono uppercase tracking-wider">Felt:</span> {extractedStory.emotion}</div>
@@ -4305,7 +4385,7 @@ function ProfileSettings({ profile, saveProfile, setShowOnboarding }) {
   ];
 
   return (
-    <div className="p-12 max-w-4xl">
+    <div className="p-4 md:p-8 lg:p-12 max-w-4xl">
       <SectionHeader
         kicker="Foundation · Profile"
         title="Brand Identity"
@@ -4353,7 +4433,7 @@ function ProfileSettings({ profile, saveProfile, setShowOnboarding }) {
         {activeTab === 'voice' && (
           <>
             <Field label="Voice archetype">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {['analytical', 'storyteller', 'contrarian', 'practitioner', 'professorial', 'wry'].map(v => (
                   <button key={v} onClick={() => update('voice', v)} className={`p-3 text-left border capitalize ${edited.voice === v ? 'border-stone-900 bg-stone-900 text-stone-50' : 'border-stone-300'}`}>
                     {v}
@@ -4470,7 +4550,7 @@ Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       saveDna({ ...dna, manifesto: { ...parsed, generatedAt: new Date().toISOString() } });
       setTab('manifesto');
     } catch (e) { console.error(e); }
@@ -4478,7 +4558,7 @@ Return ONLY valid JSON:
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Foundation · Self-Discovery"
         title="Brand DNA Lab"
@@ -4488,7 +4568,7 @@ Return ONLY valid JSON:
       {/* Completeness hero */}
       <div className="bg-stone-950 text-stone-50 p-10 mb-8 grain relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-amber-900 opacity-20 rounded-full blur-3xl" />
-        <div className="relative grid grid-cols-3 gap-8">
+        <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <div>
             <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-2">Brand DNA</div>
             <div className="font-display text-7xl font-light leading-none">{completeness}<span className="text-stone-600 text-4xl">%</span></div>
@@ -4501,7 +4581,7 @@ Return ONLY valid JSON:
               {completeness >= 70 && completeness < 100 && 'Almost there. One synthesis away from your manifesto.'}
               {completeness === 100 && 'Fully decoded. The AI now writes in your DNA.'}
             </div>
-            <div className="grid grid-cols-6 gap-1 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-1 mb-4">
               {tabs.map((t, i) => {
                 const filled = (
                   (i === 0 && dna.origin?.moments?.length >= 3) ||
@@ -4585,7 +4665,7 @@ function DnaOriginMoments({ dna, saveDna, profile }) {
       </div>
 
       {/* Existing moments */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {moments.map((m, i) => (
           <div key={i} className="bg-white border border-stone-200 p-6 relative group">
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Moment {String(i+1).padStart(2,'0')} · {m.age}</div>
@@ -4621,7 +4701,7 @@ function DnaOriginMoments({ dna, saveDna, profile }) {
       {moments.length < 3 && (
         <div className="bg-white border border-stone-200 p-7">
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">Need a starting point?</div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {prompts.map((p, i) => (
               <button key={i} onClick={() => setDraft({ ...draft, age: p.age })} className="text-left p-4 bg-stone-50 border border-stone-200 hover:border-stone-500 transition-all">
                 <div className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-1">{p.age}</div>
@@ -4668,7 +4748,7 @@ function DnaValues({ dna, saveDna }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Core values */}
         <div className="bg-white border border-stone-200 p-7">
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-2">Core Values</div>
@@ -4692,7 +4772,7 @@ function DnaValues({ dna, saveDna }) {
         </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white border border-stone-200 p-7">
           <Field label="Things you've stopped believing in the last 3 years">
             <Textarea rows={4} value={v.unlearned || ''} onChange={val => update('unlearned', val)} placeholder="What were you sure of in 2022 that you now think is wrong?" />
@@ -4731,7 +4811,7 @@ function DnaArchetype({ dna, saveDna }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {archetypes.map(a => {
           const isPrimary = arch.primary === a.v;
           const isSecondary = arch.secondary === a.v;
@@ -4820,7 +4900,7 @@ Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       saveDna({ ...dna, voice: { ...parsed, samples, analyzedAt: new Date().toISOString() } });
     } catch (e) { console.error(e); }
     setAnalyzing(false);
@@ -4835,7 +4915,7 @@ Return ONLY valid JSON:
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {samples.map((s, i) => (
           <div key={i} className="bg-white border border-stone-200 p-5">
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Sample {i+1}</div>
@@ -4864,7 +4944,7 @@ Return ONLY valid JSON:
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-white border border-stone-200 p-5">
               <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Sentence length</div>
               <div className="font-display text-2xl font-light capitalize">{v.sentenceLength}</div>
@@ -4879,7 +4959,7 @@ Return ONLY valid JSON:
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white border border-stone-200 p-6">
               <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-700 font-semibold mb-3">Signature moves</div>
               <ul className="space-y-2">
@@ -4903,7 +4983,7 @@ Return ONLY valid JSON:
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-stone-50 border border-stone-200 p-5">
               <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Typical opening</div>
               <div className="font-sans text-sm text-stone-700 italic">"{v.typicalOpening}"</div>
@@ -4990,7 +5070,7 @@ function DnaTimeline({ dna, saveDna }) {
       {/* Add event */}
       <div className="bg-stone-950 text-stone-50 p-7">
         <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">Add a chapter</div>
-        <div className="grid grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
           <input value={draft.year} onChange={e => setDraft({ ...draft, year: e.target.value })} placeholder="Year" type="number" className="bg-stone-900 border border-stone-700 px-3 py-2 font-mono text-sm" />
           <input value={draft.label} onChange={e => setDraft({ ...draft, label: e.target.value })} placeholder="Period label" className="col-span-2 bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
           <select value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value })} className="col-span-2 bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm">
@@ -5034,7 +5114,7 @@ function DnaManifesto({ dna, saveDna, onRegenerate, generating }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-white border border-stone-200 p-6">
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-2">Tagline</div>
           <div className="font-display text-xl font-medium text-stone-900 leading-snug">{m.tagline}</div>
@@ -5132,7 +5212,7 @@ function PhotoMiningRitual({ photoMining, savePhotoMining, stories, saveStories,
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Source Material · Pause-Reflect-Document"
         title="Photo Mining Ritual"
@@ -5140,7 +5220,7 @@ function PhotoMiningRitual({ photoMining, savePhotoMining, stories, saveStories,
       />
 
       {/* Top stats */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Months Mined" value={completed} hint={`of 60`} icon={CalendarDays} />
         <StatCard label="Stories Captured" value={withStories} hint="From mining" icon={BookOpen} />
         <StatCard label="Coverage" value={`${Math.round((completed/60)*100)}%`} hint="Of last 5 years" icon={Telescope} />
@@ -5150,12 +5230,12 @@ function PhotoMiningRitual({ photoMining, savePhotoMining, stories, saveStories,
       {/* Ritual instructions */}
       <div className="bg-stone-950 text-stone-50 p-8 mb-8 grain relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-amber-900 opacity-15 rounded-full blur-3xl" />
-        <div className="relative grid grid-cols-3 gap-8">
+        <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <div>
             <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-2">The ritual</div>
             <div className="font-display text-3xl font-light leading-tight">Find a quiet bench.<br /><span className="text-stone-400">Open your photos.</span></div>
           </div>
-          <div className="col-span-2 grid grid-cols-3 gap-4">
+          <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <div className="font-mono text-[10px] uppercase tracking-wider text-amber-400 mb-2">Step 1</div>
               <div className="font-display text-base font-medium mb-1">Pause</div>
@@ -5225,7 +5305,7 @@ function PhotoMiningRitual({ photoMining, savePhotoMining, stories, saveStories,
             <div className="p-7 space-y-5">
               <div className="bg-amber-50 border border-amber-200 p-4">
                 <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-amber-800 mb-2">Prompts to jog memory</div>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                   {prompts.slice(0, 6).map((p, i) => (
                     <div key={i} className="font-sans text-xs text-stone-700 leading-relaxed">→ {p}</div>
                   ))}
@@ -5253,7 +5333,7 @@ function PhotoMiningRitual({ photoMining, savePhotoMining, stories, saveStories,
                       <Input value={draft.storyTitle} onChange={v => setDraft({ ...draft, storyTitle: v })} placeholder="e.g. The Jazz pitch I almost walked out of" />
                     </Field>
                     <Field label="Category">
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         {[
                           { v: 'pain', label: 'Pain' },
                           { v: 'prize', label: 'Prize' },
@@ -5326,7 +5406,7 @@ function ConversionLab({ optins, saveOptins, profile, icps, stories }) {
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Conversion · Lead Magnets"
         title="Conversion Lab"
@@ -5336,13 +5416,13 @@ function ConversionLab({ optins, saveOptins, profile, icps, stories }) {
       {/* Hero */}
       <div className="bg-stone-950 text-stone-50 p-8 mb-8 grain relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-amber-900 opacity-20 rounded-full blur-3xl" />
-        <div className="relative grid grid-cols-2 gap-10 items-end">
+        <div className="relative grid grid-cols-1 md:grid-cols-2 gap-10 items-end">
           <div>
             <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-3">Why opt-ins matter</div>
             <div className="font-display text-3xl font-light leading-tight mb-4">DM beats follow.<br /><span className="text-stone-400">Email beats DM.</span></div>
             <div className="font-sans text-sm text-stone-300 leading-relaxed max-w-md">A follower is a stranger. An opt-in is a permission slip — name, email, phone — to pull them out of the algorithm and into your funnel.</div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="bg-stone-900 border border-stone-800 p-4">
               <Inbox className="w-4 h-4 text-amber-400 mb-2" />
               <div className="font-mono text-[10px] uppercase tracking-wider text-stone-400">Waiting List</div>
@@ -5431,7 +5511,7 @@ function ConversionOverview({ optins, setTab, profile }) {
     <div className="space-y-6">
       <div className="bg-white border border-stone-200 p-8">
         <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-4">The temperature ladder</div>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {ladders.map((l, i) => (
             <div key={i} className={`bg-stone-50 border-l-4 ${l.color} p-5 relative`}>
               <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-1">Stage 0{i+1}</div>
@@ -5448,7 +5528,7 @@ function ConversionOverview({ optins, setTab, profile }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <button onClick={() => setTab('waitlist')} className="bg-white border border-stone-200 p-7 text-left hover:border-stone-900 group">
           <Inbox className="w-5 h-5 text-stone-700 mb-3" />
           <div className="font-display text-2xl font-light text-stone-900 mb-1">Waiting List</div>
@@ -5527,7 +5607,7 @@ Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       setDraft({ ...draft, generated: parsed, name: draft.name || parsed.headline });
     } catch (e) { console.error(e); }
     setGenerating(false);
@@ -5549,7 +5629,7 @@ Return ONLY valid JSON:
       <div className="bg-stone-950 text-stone-50 p-7">
         <div className="font-display text-2xl font-light mb-1">Generate a waiting list concept</div>
         <div className="font-sans text-sm text-stone-300 mb-5">Give us the rough product and target. We'll draft the landing page, fields, and 3-email nurture.</div>
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <Field label="Concept name (working title)">
             <input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. The TonePerks Voice-Ad Index" />
           </Field>
@@ -5579,7 +5659,7 @@ Return ONLY valid JSON:
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-amber-800 mb-2">Scarcity narrative</div>
             <div className="font-sans text-sm text-stone-700 leading-relaxed italic">{draft.generated.scarcityNarrative}</div>
           </div>
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Value prop bullets</div>
               <div className="font-sans text-sm text-stone-800 whitespace-pre-wrap leading-relaxed">{draft.generated.valueProp}</div>
@@ -5670,7 +5750,7 @@ Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       setDraft({ ...draft, generated: parsed, name: parsed.name });
     } catch (e) { console.error(e); }
     setGenerating(false);
@@ -5709,7 +5789,7 @@ Return ONLY valid JSON:
           </div>
 
           {/* Bands preview */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2">
             {(draft.generated.bands || []).map((b, i) => (
               <div key={i} className={`p-4 ${i === 0 ? 'bg-stone-100' : i === 1 ? 'bg-amber-50' : i === 2 ? 'bg-emerald-50' : 'bg-stone-900 text-stone-50'}`}>
                 <div className="font-mono text-[10px] uppercase tracking-wider mb-1 opacity-70">{b.minScore}-{b.maxScore} pts</div>
@@ -5802,7 +5882,7 @@ Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       setDraft({ ...draft, generated: parsed });
     } catch (e) { console.error(e); }
     setGenerating(false);
@@ -5814,7 +5894,7 @@ Return ONLY valid JSON:
     <div className="space-y-6">
       <div className="bg-stone-950 text-stone-50 p-7">
         <div className="font-display text-2xl font-light mb-5">Plan a webinar</div>
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <Field label="Working title">
             <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. The 90-day MOU framework" />
           </Field>
@@ -5870,7 +5950,7 @@ Return ONLY valid JSON:
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-stone-50 border border-stone-200 p-5">
               <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Slide outline</div>
               <ol className="space-y-1">
@@ -5943,7 +6023,7 @@ Return ONLY valid JSON:
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       setDraft({ ...draft, generated: parsed, name: parsed.finalName });
     } catch (e) { console.error(e); }
     setGenerating(false);
@@ -5955,7 +6035,7 @@ Return ONLY valid JSON:
     <div className="space-y-6">
       <div className="bg-stone-950 text-stone-50 p-7">
         <div className="font-display text-2xl font-light mb-5">Outline a mini-course</div>
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <Field label="Course name (working)">
             <input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
           </Field>
@@ -5970,7 +6050,7 @@ Return ONLY valid JSON:
         </Field>
         <div className="mt-4">
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Anchor stories (optional — pick 2-3 to weave in)</div>
-          <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
             {stories.slice(0, 12).map(s => {
               const sel = draft.anchorStoryIds.includes(s.id);
               return (
@@ -6006,7 +6086,7 @@ Return ONLY valid JSON:
                   <div className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-1">Hook line</div>
                   <div className="font-sans text-sm text-stone-700 italic">"{l.hookLine}"</div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <div className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-1">Core lesson</div>
                     <div className="font-sans text-sm text-stone-700 leading-relaxed">{l.coreLesson}</div>
@@ -6093,7 +6173,7 @@ function RevenuePlanner({ revenuePlan, saveRevenuePlan, profile, analytics, cont
   ];
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Conversion · Revenue Math"
         title="Revenue Planner"
@@ -6103,7 +6183,7 @@ function RevenuePlanner({ revenuePlan, saveRevenuePlan, profile, analytics, cont
       {/* Hero with goal calculator */}
       <div className="bg-stone-950 text-stone-50 p-10 mb-8 grain relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-900 opacity-30 rounded-full blur-3xl" />
-        <div className="relative grid grid-cols-2 gap-12">
+        <div className="relative grid grid-cols-1 md:grid-cols-2 gap-12">
           <div>
             <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-3">Your goal</div>
             <div className="font-display text-7xl font-light leading-none mb-3">${(annualGoal/1000000).toFixed(2)}M<span className="text-stone-600 text-3xl"> / year</span></div>
@@ -6162,7 +6242,7 @@ function RevenuePlanner({ revenuePlan, saveRevenuePlan, profile, analytics, cont
       </div>
 
       {/* Reality check */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-stone-200 p-6">
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-2">Reality check · Posts</div>
           <div className="font-display text-3xl font-light text-stone-900 mb-1">{postsPerWeek}<span className="text-stone-400 text-lg"> /week</span></div>
@@ -6195,7 +6275,7 @@ function RevenuePlanner({ revenuePlan, saveRevenuePlan, profile, analytics, cont
       {/* benchmarks */}
       <div className="bg-stone-50 border border-stone-200 p-7">
         <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">Industry benchmarks</div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="bg-white border border-stone-200 p-5">
             <div className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-1">7 figures</div>
             <div className="font-display text-2xl font-light text-stone-900">$25k / week</div>
@@ -6256,7 +6336,7 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
   const appearedQueries = queries.filter(q => q.appeared);
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Distribution · The Closing Window"
         title="AI Search Optimization"
@@ -6266,7 +6346,7 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
       {/* Hero */}
       <div className="bg-stone-950 text-stone-50 p-10 mb-8 grain relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-violet-900 opacity-25 rounded-full blur-3xl" />
-        <div className="relative grid grid-cols-3 gap-8">
+        <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <div>
             <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-3">AIO Score</div>
             <div className="font-display text-7xl font-light leading-none">{aioScore}<span className="text-stone-600 text-3xl">/100</span></div>
@@ -6310,7 +6390,7 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
 
       {tab === 'overview' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white border border-stone-200 p-7">
               <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-2">SEO</div>
               <div className="font-display text-3xl font-light text-stone-900 mb-3">Saturated</div>
@@ -6329,7 +6409,7 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
 
           <div className="bg-amber-50 border border-amber-200 p-7">
             <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-amber-800 mb-3">The 4-step play</div>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { n: '01', t: 'Pick 1-3 topics', d: 'Niche enough that you can own them. Not "marketing" — "voice-channel partnerships in MENA telco".' },
                 { n: '02', t: 'Take a stance', d: 'Boring summaries don\'t get cited. Strong, defensible opinions get quoted.' },
@@ -6368,7 +6448,7 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
           {topics.length === 0 ? (
             <EmptyState icon={Network} title="No topic clusters yet" description="Pick the first topic you want to be the AI's go-to source on." />
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {topics.map(t => (
                 <div key={t.id} className="bg-white border border-stone-200 p-7 group relative">
                   <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-2">Topic cluster</div>
@@ -6399,7 +6479,7 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
           <div className="bg-stone-950 text-stone-50 p-7">
             <div className="font-display text-2xl font-light mb-1">Log a query test</div>
             <div className="font-sans text-sm text-stone-300 mb-5">Once a week, ask a question in your space to ChatGPT/Claude/Perplexity. Did you appear? Where? Log it here.</div>
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
               <select value={queryDraft.engine} onChange={e => setQueryDraft({ ...queryDraft, engine: e.target.value })} className="bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm">
                 <option>ChatGPT</option><option>Claude</option><option>Perplexity</option><option>Gemini</option><option>Grok</option>
               </select>
@@ -6567,7 +6647,7 @@ Return ONLY valid JSON:
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       saveIdeas(ideas.map(i => i.id === idea.id ? { ...i, ...parsed, processed: true } : i));
     } catch (e) { console.error(e); }
     setProcessing(null);
@@ -6605,7 +6685,7 @@ Return ONLY valid JSON:
   }, [ideas, filter, search]);
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Capture · Frictionless Capture"
         title="Idea Inbox"
@@ -6651,7 +6731,7 @@ Return ONLY valid JSON:
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <StatCard label="Captured" value={ideas.length} icon={Inbox} />
         <StatCard label="Unprocessed" value={ideas.filter(i => !i.processed).length} hint="To sort with AI" icon={Hourglass} />
         <StatCard label="Pain leads" value={ideas.filter(i => i.category === 'pain').length} icon={AlertCircle} />
@@ -6673,7 +6753,7 @@ Return ONLY valid JSON:
       {filtered.length === 0 ? (
         <EmptyState icon={Inbox} title={search || filter !== 'all' ? 'No matches' : 'Nothing captured yet'} description={search || filter !== 'all' ? 'Try changing the filters.' : 'Capture your first idea above. Voice works while you walk.'} />
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map(idea => (
             <div key={idea.id} className={`bg-white border ${idea.pinned ? 'border-amber-400 border-l-4' : 'border-stone-200'} p-5 group relative`}>
               <div className="flex items-center gap-2 mb-3">
@@ -6744,7 +6824,7 @@ function ConversationsHub({ conversations, saveConversations, profile, contentPi
   const remove = (id) => { if (window.confirm('Delete this conversation? All message history will be lost.')) saveConversations(conversations.filter(c => c.id !== id)); };
 
   return (
-    <div className="p-12 max-w-[1800px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1800px]">
       <SectionHeader
         kicker="Pipeline · The Conversation Layer"
         title="DM & Conversations"
@@ -6756,7 +6836,7 @@ function ConversationsHub({ conversations, saveConversations, profile, contentPi
         }
       />
 
-      <div className="grid grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <StatCard label="Total" value={stats.total} icon={MessageCircle} />
         <StatCard label="Open" value={stats.open} hint="In active stages" icon={Activity} />
         <StatCard label="Booked calls" value={stats.booked} icon={Phone} />
@@ -6780,7 +6860,7 @@ function ConversationsHub({ conversations, saveConversations, profile, contentPi
       )}
 
       {view === 'pipeline' && (
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {CONVO_STAGES.map(stage => {
             const items = conversations.filter(c => c.stage === stage.v);
             return (
@@ -6848,9 +6928,9 @@ function NewConversationForm({ onSave, onCancel, contentPieces }) {
     <div className="bg-stone-950 text-stone-50 p-7 mb-6">
       <div className="flex justify-between items-center mb-5">
         <div className="font-display text-2xl font-light">Log a new conversation</div>
-        <button onClick={onCancel}><X className="w-5 h-5" /></button>
+        <button aria-label="Close" onClick={onCancel}><X className="w-5 h-5" /></button>
       </div>
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <Field label="Source">
           <select value={c.source} onChange={e => setC({ ...c, source: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm">
             <option>LinkedIn</option><option>X / Twitter</option><option>Instagram</option><option>Email</option><option>WhatsApp</option><option>Other</option>
@@ -6868,7 +6948,7 @@ function NewConversationForm({ onSave, onCancel, contentPieces }) {
       <Field label="Their first message (or your opener if you reached out)">
         <textarea rows={4} value={c.firstMessage} onChange={e => setC({ ...c, firstMessage: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
       </Field>
-      <div className="grid grid-cols-2 gap-4 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <Field label="Linked to which piece of content (optional)">
           <select value={c.linkedToPiece} onChange={e => setC({ ...c, linkedToPiece: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm">
             <option value="">— none —</option>
@@ -6931,7 +7011,7 @@ Return ONLY valid JSON:
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      setAiSuggestion(JSON.parse(text.replace(/```json|```/g, '').trim()));
+      setAiSuggestion(safeAIParse(text));
     } catch (e) { console.error(e); }
     setDrafting(false);
   };
@@ -6949,8 +7029,8 @@ Return ONLY valid JSON:
             <select value={conversation.stage} onChange={e => onMoveStage(conversation.id, e.target.value)} className="px-3 py-2 border border-stone-300 font-sans text-sm">
               {CONVO_STAGES.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
             </select>
-            <button onClick={onDelete} className="p-2 hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-600" /></button>
-            <button onClick={onClose}><X className="w-5 h-5" /></button>
+            <button aria-label="Delete" onClick={onDelete} className="p-2 hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-600" /></button>
+            <button aria-label="Close" onClick={onClose}><X className="w-5 h-5" /></button>
           </div>
         </div>
 
@@ -7043,7 +7123,7 @@ function OutboundPipeline({ outbound, saveOutbound, profile, stories }) {
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Pipeline · Outbound Visibility"
         title="Outbound"
@@ -7055,7 +7135,7 @@ function OutboundPipeline({ outbound, saveOutbound, profile, stories }) {
         }
       />
 
-      <div className="grid grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <StatCard label="Total pitches" value={stats.total} icon={Megaphone} />
         <StatCard label="In flight" value={stats.pitched} hint="Pitched / awaiting" icon={Hourglass} />
         <StatCard label="Accepted" value={stats.accepted} icon={Check} />
@@ -7128,9 +7208,9 @@ function NewPitchForm({ stories, onSave, onCancel }) {
     <div className="bg-stone-950 text-stone-50 p-7 mb-6">
       <div className="flex justify-between items-center mb-5">
         <div className="font-display text-2xl font-light">New pitch</div>
-        <button onClick={onCancel}><X className="w-5 h-5" /></button>
+        <button aria-label="Close" onClick={onCancel}><X className="w-5 h-5" /></button>
       </div>
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <Field label="Type">
           <select value={p.type} onChange={e => setP({ ...p, type: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm">
             {OUTBOUND_TYPES.map(t => <option key={t.v} value={t.v}>{t.label}</option>)}
@@ -7145,7 +7225,7 @@ function NewPitchForm({ stories, onSave, onCancel }) {
           </select>
         </Field>
       </div>
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <Field label="Contact name">
           <input value={p.contactName} onChange={e => setP({ ...p, contactName: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
         </Field>
@@ -7153,7 +7233,7 @@ function NewPitchForm({ stories, onSave, onCancel }) {
           <input value={p.contactRole} onChange={e => setP({ ...p, contactRole: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. Producer / Booker" />
         </Field>
       </div>
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <Field label="Anchor story">
           <select value={p.anchorStoryId} onChange={e => setP({ ...p, anchorStoryId: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm">
             <option value="">— pick a story —</option>
@@ -7213,7 +7293,7 @@ Return ONLY valid JSON:
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      setDraftedPitch(JSON.parse(text.replace(/```json|```/g, '').trim()));
+      setDraftedPitch(safeAIParse(text));
     } catch (e) { console.error(e); }
     setDrafting(false);
   };
@@ -7231,8 +7311,8 @@ Return ONLY valid JSON:
             <select value={pitch.stage} onChange={e => onUpdate({ ...pitch, stage: e.target.value })} className="px-3 py-2 border border-stone-300 font-sans text-sm">
               {OUTBOUND_STAGES.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
             </select>
-            <button onClick={onDelete} className="p-2 hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-600" /></button>
-            <button onClick={onClose}><X className="w-5 h-5" /></button>
+            <button aria-label="Delete" onClick={onDelete} className="p-2 hover:bg-red-50"><Trash2 className="w-4 h-4 text-red-600" /></button>
+            <button aria-label="Close" onClick={onClose}><X className="w-5 h-5" /></button>
           </div>
         </div>
 
@@ -7284,7 +7364,7 @@ Return ONLY valid JSON:
 
 // ============= REPURPOSING STUDIO =============
 // One story → 5 formats simultaneously, coherent.
-function RepurposingStudio({ stories, contentPieces, saveContent, profile, icps }) {
+function RepurposingStudio({ stories, contentPieces, saveContent, profile, icps, setActiveView }) {
   const [selectedStory, setSelectedStory] = useState(null);
   const [selectedICP, setSelectedICP] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -7368,7 +7448,7 @@ Return ONLY valid JSON:
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      setGenerated(JSON.parse(text.replace(/```json|```/g, '').trim()));
+      setGenerated(safeAIParse(text));
     } catch (e) { console.error(e); }
     setGenerating(false);
   };
@@ -7395,7 +7475,7 @@ Return ONLY valid JSON:
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Production · One Story, Many Formats"
         title="Repurposing Studio"
@@ -7406,9 +7486,21 @@ Return ONLY valid JSON:
       <div className="bg-white border border-stone-200 p-6 mb-5">
         <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">1. Pick a story</div>
         {stories.length === 0 ? (
-          <div className="text-sm text-stone-500 font-sans italic py-4">No stories yet. Capture one in the Story Vault first.</div>
+          <div className="bg-amber-50 border border-amber-200 p-5 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-700 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="font-medium text-amber-900 mb-1">No stories to repurpose yet</div>
+              <div className="font-sans text-sm text-amber-800 mb-3">Capture your first story (voice works great) — then come back here to turn it into 5 platform-native posts in one click.</div>
+              <button
+                onClick={() => setActiveView && setActiveView('stories')}
+                className="px-4 py-2 bg-stone-900 text-stone-50 font-sans text-xs hover:bg-stone-800 inline-flex items-center gap-2"
+              >
+                <BookOpen className="w-3.5 h-3.5" /> Go to Story Vault
+              </button>
+            </div>
+          </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto">
             {stories.map(s => (
               <button key={s.id} onClick={() => setSelectedStory(s)} className={`p-3 text-left border ${selectedStory?.id === s.id ? 'border-stone-900 bg-stone-900 text-stone-50' : 'border-stone-200 bg-stone-50 hover:border-stone-500'}`}>
                 <div className={`font-mono text-[10px] uppercase tracking-wider mb-1 ${selectedStory?.id === s.id ? 'text-stone-400' : 'text-stone-500'}`}>{s.month} · {s.category}</div>
@@ -7422,7 +7514,7 @@ Return ONLY valid JSON:
       {icps.length > 0 && (
         <div className="bg-white border border-stone-200 p-6 mb-5">
           <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">2. ICP target (optional)</div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {icps.map(icp => (
               <button key={icp.id} onClick={() => setSelectedICP(selectedICP?.id === icp.id ? null : icp)} className={`p-3 text-left border ${selectedICP?.id === icp.id ? 'border-stone-900 bg-stone-900 text-stone-50' : 'border-stone-200 bg-stone-50 hover:border-stone-500'}`}>
                 <Crosshair className="w-3.5 h-3.5 mb-1.5" />
@@ -7489,7 +7581,7 @@ Return ONLY valid JSON:
                 {copied === 'ig' ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
               </button>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2">
               {generated.instagram_carousel.slides.map(s => (
                 <div key={s.n} className="aspect-square bg-stone-50 border border-stone-200 p-3 flex flex-col">
                   <div className="font-mono text-[10px] uppercase tracking-wider text-stone-400 mb-1">{String(s.n).padStart(2,'0')}</div>
@@ -7596,7 +7688,7 @@ Return ONLY valid JSON:
   }, [swipeFile, filter, search]);
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Capture · Inspiration File"
         title="Swipe File"
@@ -7607,7 +7699,7 @@ Return ONLY valid JSON:
       <div className="bg-stone-950 text-stone-50 p-7 mb-6">
         <div className="font-display text-2xl font-light mb-1">Capture a piece</div>
         <div className="font-sans text-sm text-stone-300 mb-5">Paste any post / tweet / hook / paragraph. We'll analyze why it works.</div>
-        <div className="grid grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
           <input value={draft.source} onChange={e => setDraft({ ...draft, source: e.target.value })} placeholder="Source (e.g. LinkedIn)" className="bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
           <input value={draft.author} onChange={e => setDraft({ ...draft, author: e.target.value })} placeholder="Author (e.g. Justin Welsh)" className="bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
           <input value={draft.url} onChange={e => setDraft({ ...draft, url: e.target.value })} placeholder="URL (optional)" className="bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
@@ -7619,7 +7711,7 @@ Return ONLY valid JSON:
       </div>
 
       {/* Stats + filters */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="In file" value={swipeFile.length} icon={Files} />
         <StatCard label="Hook patterns" value={[...new Set(swipeFile.map(s => s.hookType).filter(Boolean))].length} icon={Zap} />
         <StatCard label="Authors" value={[...new Set(swipeFile.map(s => s.author).filter(Boolean))].length} icon={Users} />
@@ -7639,7 +7731,7 @@ Return ONLY valid JSON:
       {filtered.length === 0 ? (
         <EmptyState icon={Files} title={swipeFile.length === 0 ? 'Empty swipe file' : 'No matches'} description="Capture content you admire and AI will extract why it works." />
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map(s => (
             <div key={s.id} className="bg-white border border-stone-200 p-6 group relative">
               <div className="flex items-center gap-2 mb-3">
@@ -7684,7 +7776,7 @@ Return ONLY valid JSON:
 
 // ============= NEWSLETTER STUDIO =============
 // Section-based composer with AI-assisted drafting per section.
-function NewsletterStudio({ newsletters, saveNewsletters, stories, profile }) {
+function NewsletterStudio({ newsletters, saveNewsletters, stories, profile, setActiveView }) {
   const [editing, setEditing] = useState(null);
   const [view, setView] = useState('list');
 
@@ -7723,7 +7815,7 @@ function NewsletterStudio({ newsletters, saveNewsletters, stories, profile }) {
   }
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Production · Long-form"
         title="Newsletter Studio"
@@ -7735,7 +7827,7 @@ function NewsletterStudio({ newsletters, saveNewsletters, stories, profile }) {
         }
       />
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="Total" value={newsletters.length} icon={Mail} />
         <StatCard label="Drafts" value={newsletters.filter(n => n.status === 'draft').length} icon={Edit3} />
         <StatCard label="Scheduled" value={newsletters.filter(n => n.status === 'scheduled').length} icon={Clock} />
@@ -7848,7 +7940,7 @@ Return ONLY valid JSON:
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       setN({
         ...n,
         title: parsed.title,
@@ -7869,7 +7961,7 @@ Return ONLY valid JSON:
 
   if (preview) {
     return (
-      <div className="p-12 max-w-3xl">
+      <div className="p-4 md:p-8 lg:p-12 max-w-3xl">
         <div className="flex justify-between items-center mb-6">
           <button onClick={() => setPreview(false)} className="font-sans text-sm text-stone-600 inline-flex items-center gap-1"><ChevronLeft className="w-4 h-4" /> Back to editor</button>
           <button onClick={() => onSave(n)} className="px-5 py-2 bg-stone-900 text-stone-50 font-sans text-sm inline-flex items-center gap-2"><Save className="w-4 h-4" /> Save</button>
@@ -7892,7 +7984,7 @@ Return ONLY valid JSON:
   }
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <div className="flex justify-between items-start mb-6">
         <div>
           <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-2">Editing newsletter</div>
@@ -7906,7 +7998,7 @@ Return ONLY valid JSON:
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Main editor */}
         <div className="col-span-2 space-y-4">
           {/* Header fields */}
@@ -8014,7 +8106,7 @@ function ProofVault({ proof, saveProof, contentPieces, profile }) {
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Capture · Proof Bank"
         title="Proof Vault"
@@ -8026,7 +8118,7 @@ function ProofVault({ proof, saveProof, contentPieces, profile }) {
         }
       />
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="Items" value={stats.total} icon={BadgeCheck} />
         <StatCard label="Testimonials" value={stats.testimonials} icon={Quote} />
         <StatCard label="Wins" value={stats.wins} icon={Trophy} />
@@ -8062,7 +8154,7 @@ function ProofVault({ proof, saveProof, contentPieces, profile }) {
       {filtered.length === 0 ? (
         <EmptyState icon={BadgeCheck} title={proof.length === 0 ? 'No proof yet' : 'No matches'} description={proof.length === 0 ? 'Capture your first win, testimonial, or milestone.' : 'Try a different filter.'} />
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map(p => {
             const t = PROOF_TYPES.find(x => x.v === p.type);
             return (
@@ -8114,9 +8206,9 @@ function ProofForm({ proof, onSave, onCancel }) {
     <div className="bg-stone-950 text-stone-50 p-7 mb-6">
       <div className="flex justify-between items-center mb-5">
         <div className="font-display text-2xl font-light">{p.id ? 'Edit proof' : 'New proof'}</div>
-        <button onClick={onCancel}><X className="w-5 h-5" /></button>
+        <button aria-label="Close" onClick={onCancel}><X className="w-5 h-5" /></button>
       </div>
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <Field label="Type">
           <select value={p.type} onChange={e => setP({ ...p, type: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm">
             {PROOF_TYPES.map(t => <option key={t.v} value={t.v}>{t.label}</option>)}
@@ -8171,7 +8263,7 @@ function PublicProfileBuilder({ publicProfile, savePublicProfile, profile, dna, 
   }
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Distribution · Your Public Face"
         title="Public Profile"
@@ -8183,7 +8275,7 @@ function PublicProfileBuilder({ publicProfile, savePublicProfile, profile, dna, 
         }
       />
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           {/* Username */}
           <div className="bg-white border border-stone-200 p-6">
@@ -8231,7 +8323,7 @@ function PublicProfileBuilder({ publicProfile, savePublicProfile, profile, dna, 
             {stories.length === 0 ? (
               <div className="text-sm text-stone-500 italic font-sans">No stories yet. Add them in Story Vault.</div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {stories.map(s => {
                   const sel = featuredStoryIds.includes(s.id);
                   return (
@@ -8261,7 +8353,7 @@ function PublicProfileBuilder({ publicProfile, savePublicProfile, profile, dna, 
           {/* Contact */}
           <div className="bg-white border border-stone-200 p-6">
             <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">Contact links</div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Field label="LinkedIn URL"><Input value={p.linkedin || ''} onChange={v => update('linkedin', v)} /></Field>
               <Field label="X / Twitter URL"><Input value={p.twitter || ''} onChange={v => update('twitter', v)} /></Field>
               <Field label="Email"><Input value={p.email || ''} onChange={v => update('email', v)} /></Field>
@@ -8436,13 +8528,13 @@ Return ONLY valid JSON:
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      setAudit({ ...JSON.parse(text.replace(/```json|```/g, '').trim()), generatedAt: new Date().toISOString() });
+      setAudit({ ...safeAIParse(text), generatedAt: new Date().toISOString() });
     } catch (e) { console.error(e); }
     setAuditing(false);
   };
 
   return (
-    <div className="p-12 max-w-[1600px]">
+    <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
         kicker="Overview · Quarterly Audit"
         title="Brand Health"
@@ -8452,7 +8544,7 @@ Return ONLY valid JSON:
       {/* Overall score */}
       <div className="bg-stone-950 text-stone-50 p-10 mb-8 grain relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-amber-900 opacity-25 rounded-full blur-3xl" />
-        <div className="relative grid grid-cols-3 gap-8">
+        <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <div>
             <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-3">Brand health</div>
             <div className="font-display text-8xl font-light leading-none">{overall}<span className="text-stone-600 text-4xl">%</span></div>
@@ -8464,7 +8556,7 @@ Return ONLY valid JSON:
             </div>
           </div>
           <div className="col-span-2">
-            <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
               <div className="bg-emerald-900/30 border border-emerald-800 p-4">
                 <div className="font-mono text-[10px] uppercase tracking-wider text-emerald-400 mb-2">Strongest</div>
                 <div className="font-display text-2xl">{strongest?.label}</div>
@@ -8484,7 +8576,7 @@ Return ONLY valid JSON:
       </div>
 
       {/* Dimensions grid */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {dimensions.map(d => (
           <button key={d.k} onClick={() => setActiveView(d.view)} className="bg-white border border-stone-200 p-5 text-left hover:border-stone-900 group">
             <div className="flex justify-between items-baseline mb-2">
@@ -8511,7 +8603,7 @@ Return ONLY valid JSON:
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="bg-emerald-50 border border-emerald-200 p-6">
               <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-emerald-800 mb-3">▲ What's working</div>
               <ul className="space-y-2.5">
@@ -8528,7 +8620,7 @@ Return ONLY valid JSON:
 
           <div className="bg-white border border-stone-200 p-6">
             <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-3">Lock these in for the next 90 days</div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {audit.weeklyHabits.map((h, i) => (
                 <div key={i} className="border border-stone-200 p-4">
                   <div className="font-mono text-[10px] uppercase tracking-wider text-stone-400 mb-1">Habit {i+1}</div>
@@ -8598,7 +8690,7 @@ Return ONLY valid JSON:
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       saveBriefing({ ...briefing, [todayKey]: { ...parsed, generatedAt: new Date().toISOString() } });
     } catch (e) { console.error(e); }
     setGenerating(false);
@@ -8635,7 +8727,7 @@ Return ONLY valid JSON:
         </div>
 
         {todayBriefing && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-stone-900 border border-stone-800 p-5">
               <div className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-2">Today's prompt</div>
               <div className="font-display text-base text-stone-100 leading-snug mb-3">{todayBriefing.promptOfTheDay}</div>
@@ -8841,7 +8933,7 @@ Return ONLY valid JSON:
       const d = await r.json();
       if (d.error) throw new Error(d.error.message || 'AI request failed');
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+      const parsed = safeAIParse(text);
       setStructured(parsed);
       setPhase('done');
     } catch (e) {
@@ -8891,7 +8983,7 @@ Return ONLY valid JSON:
                 {phase === 'done' && 'Story drafted. Review, then open the form to refine and save.'}
               </div>
             </div>
-            <button onClick={onCancel} className="p-2 hover:bg-stone-800"><X className="w-5 h-5" /></button>
+            <button aria-label="Close" onClick={onCancel} className="p-2 hover:bg-stone-800"><X className="w-5 h-5" /></button>
           </div>
         </div>
 
@@ -8908,7 +9000,7 @@ Return ONLY valid JSON:
 
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-3">Speak in</div>
-                <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto">
                   {VOICE_LANGS.map(l => (
                     <button
                       key={l.code}
@@ -8931,7 +9023,7 @@ Return ONLY valid JSON:
 
               <div className="bg-stone-100 border-l-4 border-stone-900 p-5">
                 <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-700 mb-2">A good story has</div>
-                <div className="grid grid-cols-2 gap-2 font-sans text-sm text-stone-700">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 font-sans text-sm text-stone-700">
                   <div>→ Where + when it happened</div>
                   <div>→ What was at stake</div>
                   <div>→ What made it hard</div>
@@ -8993,7 +9085,7 @@ Return ONLY valid JSON:
           {/* Phase: REVIEW */}
           {phase === 'review' && (
             <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div className="bg-white border border-stone-200 p-3 text-center">
                   <div className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-1">Duration</div>
                   <div className="font-display text-xl font-light text-stone-900">{fmt(duration)}</div>
@@ -9025,7 +9117,7 @@ Return ONLY valid JSON:
                 <div className="bg-red-50 border border-red-200 p-4 font-sans text-sm text-red-800">{error}</div>
               )}
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 <button onClick={reset} className="px-4 py-3 border border-stone-300 hover:border-stone-500 font-sans text-sm inline-flex items-center justify-center gap-2"><Repeat className="w-4 h-4" /> Re-record</button>
                 <button onClick={start} className="px-4 py-3 border border-stone-300 hover:border-stone-500 font-sans text-sm inline-flex items-center justify-center gap-2"><Plus className="w-4 h-4" /> Continue recording</button>
                 <button
@@ -9114,7 +9206,7 @@ Return ONLY valid JSON:
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 <button onClick={reset} className="px-4 py-3 border border-stone-300 hover:border-stone-500 font-sans text-sm inline-flex items-center justify-center gap-2"><Repeat className="w-4 h-4" /> Re-record</button>
                 <button onClick={() => setPhase('review')} className="px-4 py-3 border border-stone-300 hover:border-stone-500 font-sans text-sm inline-flex items-center justify-center gap-2"><Edit3 className="w-4 h-4" /> Edit transcript</button>
                 <button onClick={useThisStory} className="px-4 py-3 bg-stone-900 text-stone-50 font-sans text-sm inline-flex items-center justify-center gap-2"><ArrowRight className="w-4 h-4" /> Use this · open form</button>
