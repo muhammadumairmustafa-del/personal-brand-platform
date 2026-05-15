@@ -1590,7 +1590,7 @@ function StoryVault({ stories, saveStories, profile }) {
               key={story.id}
               story={story}
               onEdit={() => { setEditing(story); setShowForm(true); }}
-              onDelete={() => saveStories(stories.filter(s => s.id !== story.id))}
+              onDelete={() => { if (window.confirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
               onUpdate={(updated) => saveStories(stories.map(s => s.id === updated.id ? updated : s))}
             />
           ))}
@@ -1602,7 +1602,7 @@ function StoryVault({ stories, saveStories, profile }) {
               key={story.id}
               story={story}
               onEdit={() => { setEditing(story); setShowForm(true); }}
-              onDelete={() => saveStories(stories.filter(s => s.id !== story.id))}
+              onDelete={() => { if (window.confirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
             />
           ))}
         </div>
@@ -1997,7 +1997,7 @@ Build a deep, specific ICP. Return ONLY valid JSON:
             key={icp.id} 
             icp={icp} 
             onEdit={() => { setEditing(icp); setShowForm(true); }}
-            onDelete={() => saveIcps(icps.filter(i => i.id !== icp.id))}
+            onDelete={() => { if (window.confirm('Delete this ICP? This cannot be undone.')) saveIcps(icps.filter(i => i.id !== icp.id)); }}
           />
         ))}
       </div>
@@ -2427,7 +2427,7 @@ Return ONLY valid JSON:
                   {copiedId === hook.id ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
                 </button>
                 {hook.custom && (
-                  <button onClick={() => saveHooks(hooks.filter(h => h.id !== hook.id))} className="px-3 py-1.5 hover:bg-red-50 font-sans text-xs text-red-700">
+                  <button onClick={() => { if (window.confirm('Delete this hook?')) saveHooks(hooks.filter(h => h.id !== hook.id)); }} className="px-3 py-1.5 hover:bg-red-50 font-sans text-xs text-red-700">
                     Delete
                   </button>
                 )}
@@ -2800,7 +2800,7 @@ Return ONLY valid JSON:
                   piece={p} 
                   onCopy={(text) => copyContent(text, p.id)}
                   copied={copied === p.id}
-                  onDelete={() => saveContent(contentPieces.filter(c => c.id !== p.id))}
+                  onDelete={() => { if (window.confirm('Delete this content piece? This cannot be undone.')) saveContent(contentPieces.filter(c => c.id !== p.id)); }}
                   onUpdate={(updated) => saveContent(contentPieces.map(c => c.id === updated.id ? updated : c))}
                 />
               ))}
@@ -3309,7 +3309,7 @@ Return ONLY valid JSON:
                     <div className="flex items-center gap-2">
                       <Pill color="blue">{b.platform}</Pill>
                       <Pill>{b.format}</Pill>
-                      <button onClick={() => saveBatches(batches.filter(x => x.id !== b.id))} className="p-1.5 hover:bg-red-50">
+                      <button onClick={() => { if (window.confirm('Delete this batch? Scheduled posts stay; only the batch record is removed.')) saveBatches(batches.filter(x => x.id !== b.id)); }} className="p-1.5 hover:bg-red-50">
                         <Trash2 className="w-3.5 h-3.5 text-red-600" />
                       </button>
                     </div>
@@ -3439,7 +3439,7 @@ function FunnelBuilder({ funnels, saveFunnels, profile }) {
             key={funnel.id}
             funnel={funnel}
             onEdit={() => { setEditing(funnel); setShowForm(true); }}
-            onDelete={() => saveFunnels(funnels.filter(f => f.id !== funnel.id))}
+            onDelete={() => { if (window.confirm('Delete this funnel? This cannot be undone.')) saveFunnels(funnels.filter(f => f.id !== funnel.id)); }}
           />
         ))}
       </div>
@@ -6045,7 +6045,7 @@ function AllOptins({ optins, saveOptins }) {
               <Pill color={o.type === 'waitlist' ? 'amber' : o.type === 'assessment' ? 'violet' : o.type === 'webinar' ? 'blue' : 'green'}>{o.type}</Pill>
               <span className="font-mono text-[10px] uppercase tracking-wider text-stone-500">{new Date(o.createdAt).toLocaleDateString()}</span>
             </div>
-            <button onClick={() => saveOptins(optins.filter(x => x.id !== o.id))} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
+            <button onClick={() => { if (window.confirm('Delete this opt-in?')) saveOptins(optins.filter(x => x.id !== o.id)); }} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
           </div>
           <div className="font-display text-2xl font-light text-stone-900">{o.name || o.finalTitle || o.finalName || 'Untitled'}</div>
           {(o.subtitle || o.promise) && <div className="font-sans text-sm text-stone-600 mt-1">{o.subtitle || o.promise}</div>}
@@ -6238,8 +6238,8 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
     setQueryDraft({ engine: 'ChatGPT', query: '', appeared: false, position: '', notes: '' });
   };
 
-  const removeTopic = (id) => saveAio({ ...aio, topics: topics.filter(t => t.id !== id) });
-  const removeQuery = (id) => saveAio({ ...aio, queries: queries.filter(q => q.id !== id) });
+  const removeTopic = (id) => { if (window.confirm('Delete this topic cluster?')) saveAio({ ...aio, topics: topics.filter(t => t.id !== id) }); };
+  const removeQuery = (id) => { if (window.confirm('Delete this query test?')) saveAio({ ...aio, queries: queries.filter(q => q.id !== id) }); };
 
   const aioScore = useMemo(() => {
     let score = 0;
@@ -6593,7 +6593,7 @@ Return ONLY valid JSON:
   };
 
   const togglePin = (id) => saveIdeas(ideas.map(i => i.id === id ? { ...i, pinned: !i.pinned } : i));
-  const remove = (id) => saveIdeas(ideas.filter(i => i.id !== id));
+  const remove = (id) => { if (window.confirm('Delete this idea? This cannot be undone.')) saveIdeas(ideas.filter(i => i.id !== id)); };
 
   const filtered = useMemo(() => {
     let list = ideas;
@@ -6741,7 +6741,7 @@ function ConversationsHub({ conversations, saveConversations, profile, contentPi
   }), [conversations]);
 
   const moveStage = (id, newStage) => saveConversations(conversations.map(c => c.id === id ? { ...c, stage: newStage, updatedAt: new Date().toISOString() } : c));
-  const remove = (id) => saveConversations(conversations.filter(c => c.id !== id));
+  const remove = (id) => { if (window.confirm('Delete this conversation? All message history will be lost.')) saveConversations(conversations.filter(c => c.id !== id)); };
 
   return (
     <div className="p-12 max-w-[1800px]">
@@ -7117,7 +7117,7 @@ function OutboundPipeline({ outbound, saveOutbound, profile, stories }) {
         </div>
       )}
 
-      {active && <PitchDetail pitch={active} stories={stories} onClose={() => setActive(null)} onUpdate={(u) => { saveOutbound(outbound.map(o => o.id === u.id ? u : o)); setActive(u); }} onDelete={() => { saveOutbound(outbound.filter(o => o.id !== active.id)); setActive(null); }} profile={profile} />}
+      {active && <PitchDetail pitch={active} stories={stories} onClose={() => setActive(null)} onUpdate={(u) => { saveOutbound(outbound.map(o => o.id === u.id ? u : o)); setActive(u); }} onDelete={() => { if (window.confirm('Delete this pitch? This cannot be undone.')) { saveOutbound(outbound.filter(o => o.id !== active.id)); setActive(null); } }} profile={profile} />}
     </div>
   );
 }
@@ -7586,7 +7586,7 @@ Return ONLY valid JSON:
     setAnalyzing(false);
   };
 
-  const remove = (id) => saveSwipeFile(swipeFile.filter(s => s.id !== id));
+  const remove = (id) => { if (window.confirm('Delete this swipe?')) saveSwipeFile(swipeFile.filter(s => s.id !== id)); };
 
   const filtered = useMemo(() => {
     let list = swipeFile;
@@ -7716,7 +7716,7 @@ function NewsletterStudio({ newsletters, saveNewsletters, stories, profile }) {
     setEditing(null);
   };
 
-  const remove = (id) => saveNewsletters(newsletters.filter(n => n.id !== id));
+  const remove = (id) => { if (window.confirm('Delete this newsletter? All sections will be lost.')) saveNewsletters(newsletters.filter(n => n.id !== id)); };
 
   if (view === 'edit' && editing) {
     return <NewsletterEditor newsletter={editing} stories={stories} profile={profile} onSave={save} onCancel={() => { setView('list'); setEditing(null); }} />;
@@ -8073,7 +8073,7 @@ function ProofVault({ proof, saveProof, contentPieces, profile }) {
                   <span className="font-mono text-[10px] uppercase tracking-wider text-stone-400">{p.when || new Date(p.createdAt).toLocaleDateString()}</span>
                   <div className="ml-auto opacity-0 group-hover:opacity-100 flex gap-1">
                     <button onClick={() => { setEditing(p); setShowNew(true); }} className="p-1.5 hover:bg-stone-100"><Edit3 className="w-3 h-3" /></button>
-                    <button onClick={() => saveProof(proof.filter(x => x.id !== p.id))} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3 h-3 text-red-600" /></button>
+                    <button onClick={() => { if (window.confirm('Delete this proof item?')) saveProof(proof.filter(x => x.id !== p.id)); }} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3 h-3 text-red-600" /></button>
                   </div>
                 </div>
                 {p.type === 'testimonial' && (
