@@ -720,16 +720,16 @@ function OnboardIdentity({ data, update }) {
         <Input value={data.name} onChange={v => update('name', v)} />
       </Field>
       <Field label="Professional title — how you'd introduce yourself at a conference">
-        <Input value={data.title} onChange={v => update('title', v)} placeholder="e.g. BD & Partnerships at stc / Founder at TonePerks" />
+        <Input value={data.title} onChange={v => update('title', v)} placeholder="e.g. Head of Product at Acme / Independent UX Consultant" />
       </Field>
       <Field label="Where you operate from">
-        <Input value={data.location} onChange={v => update('location', v)} placeholder="e.g. Riyadh, KSA / Lahore, PK" />
+        <Input value={data.location} onChange={v => update('location', v)} placeholder="e.g. London, UK / Remote" />
       </Field>
       <ChipInput
         label="Industries you operate in"
         items={data.industries}
         setItems={v => update('industries', v)}
-        suggestions={['Telecom', 'Fintech', 'BD & Partnerships', 'SaaS', 'Loan Recovery', 'Voice Advertising', 'Strategy Consulting', 'GCC Markets', 'Pakistan Markets', 'AI/ML', 'Banking']}
+        suggestions={['SaaS', 'B2B', 'Fintech', 'E-commerce', 'Consumer', 'Healthcare', 'Education', 'Marketing', 'Design', 'Engineering', 'Sales', 'Product', 'AI/ML', 'Media']}
       />
     </div>
   );
@@ -740,7 +740,7 @@ function OnboardAudience({ data, update }) {
     <div className="space-y-6">
       <div className="p-4 bg-stone-100 border-l-4 border-stone-900">
         <p className="text-sm text-stone-700 font-sans leading-relaxed">
-          <strong>Specificity wins.</strong> "Business owners" is dead air. "Telecom BD heads in MENA trying to monetize voice channels" is gold — the algorithm rewards the latter.
+          <strong>Specificity wins.</strong> "Business owners" is dead air. "Solo SaaS founders past $10k MRR trying to build a personal brand" is gold — the algorithm rewards the latter.
         </p>
       </div>
       <ChipInput
@@ -748,24 +748,24 @@ function OnboardAudience({ data, update }) {
         items={data.audiences}
         setItems={v => update('audiences', v)}
         suggestions={[
-          'Telecom BD & Partnerships leaders',
-          'Founders in MENA / South Asia',
-          'Fintech & loan recovery teams',
-          'Banking heads of collections',
-          'Strategy professionals at telcos',
-          'Aspiring BD professionals',
-          'Pakistan-based founders',
-          'GCC corporate strategists',
+          'Solo founders past $10k MRR',
+          'Early-stage SaaS operators',
+          'Indie consultants & freelancers',
+          'B2B sales & marketing leaders',
+          'Product managers at scaleups',
+          'Aspiring creators',
+          'Designers going independent',
+          'Engineering managers',
           'CMOs of growth-stage startups',
-          'VAS product managers'
+          'First-time founders'
         ]}
       />
       <Field label="Describe your dream reader in one sentence">
-        <Textarea 
+        <Textarea
           rows={3}
           value={data.idealReader || ''}
           onChange={v => update('idealReader', v)}
-          placeholder="e.g. A 35-year-old BD lead at a tier-1 telco, frustrated that good ideas die in legal, looking for proof that partnerships can actually ship."
+          placeholder="e.g. A 35-year-old product leader, frustrated that good ideas die in execution, looking for frameworks that actually ship."
         />
       </Field>
     </div>
@@ -783,18 +783,18 @@ function OnboardExpertise({ data, update }) {
         items={data.expertise}
         setItems={v => update('expertise', v)}
         suggestions={[
-          'Telco partnership structuring',
-          'RRBT / voice advertising platforms',
-          'Loan recovery via voice',
-          'Multi-stakeholder BD deals',
-          'Cross-border deal-making (KSA-PK)',
-          'Revenue share negotiation',
-          'Building BD CRMs from scratch',
-          'Going from zero to MOU',
-          'Vendor RFI responses',
-          'Strategy deck storytelling',
-          'GCC market entry',
-          'Voice AI productization'
+          'Building from zero to first $10k MRR',
+          'Cold outreach that actually converts',
+          'B2B sales cycles under 30 days',
+          'Hiring your first 5 employees',
+          'Pricing strategy & positioning',
+          'Building in public',
+          'Content systems',
+          'Product-market fit signals',
+          'Negotiating partnership deals',
+          'Running async teams',
+          'Bootstrapping vs raising',
+          'Storytelling for decks'
         ]}
       />
     </div>
@@ -815,7 +815,7 @@ function OnboardTransformation({ data, update }) {
           rows={5}
           value={data.transformation}
           onChange={v => update('transformation', v)}
-          placeholder="e.g. I help telecom BD professionals go from feature-pitching to structuring partnerships that ship — by combining operator-side empathy with founder-grade execution."
+          placeholder="e.g. I help solo founders go from feature-shipping to actually selling — by combining operator-grade discipline with creator-grade storytelling."
         />
       </Field>
     </div>
@@ -834,15 +834,15 @@ function OnboardPainPrize({ data, update }) {
         setItems={v => update('pains', v)}
         accent="red"
         suggestions={[
-          'Deals that stall in legal for months',
-          'Telco BDs going nowhere',
-          'Pitch decks that don\'t convert',
-          'Recoveries missing collection targets',
-          'Revenue shares that get gamed',
-          'Internal politics killing good projects',
-          'Vendor RFIs that read like brochures',
-          'Sales cycles measured in quarters',
-          'Partnership pipelines that look full but ship nothing'
+          'Posting into the void',
+          'Spending hours on content that gets 10 likes',
+          'Imposter syndrome before hitting "publish"',
+          'Inconsistent posting schedule',
+          'Generic AI-written posts that sound fake',
+          'No idea what to write about',
+          'Pipeline that looks full but converts nothing',
+          'Working hard but invisible to the right people',
+          'Stuck in a job nobody knows you can do'
         ]}
       />
       <ChipInput
@@ -851,15 +851,15 @@ function OnboardPainPrize({ data, update }) {
         setItems={v => update('prizes', v)}
         accent="green"
         suggestions={[
-          'A signed MOU within 90 days',
-          'A BD pipeline that compounds',
-          'Deals that ship, not just slide',
-          '4x ROI on collection campaigns',
-          'A partnership that scales to 8 figures',
-          'Recognition as the deal-closer',
-          'A repeatable BD playbook',
-          'Inbound deal flow',
-          'Equity in something real'
+          'Inbound leads from LinkedIn every week',
+          'A clear, recognizable voice in their niche',
+          'Speaking invitations they didn\'t chase',
+          'A newsletter audience that actually opens',
+          'Being known for one specific thing',
+          'A pipeline that compounds without ads',
+          'Career-changing opportunities arriving via DM',
+          'A repeatable content system',
+          'Real income from their personal brand'
         ]}
       />
     </div>
@@ -872,7 +872,7 @@ function OnboardVoice({ data, update }) {
       <Field label="Your voice archetype">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
-            { v: 'analytical', label: 'Analytical & frameworks-driven', desc: 'Like , Lex Fridman' },
+            { v: 'analytical', label: 'Analytical & frameworks-driven', desc: 'Like Lex Fridman, Tim Urban' },
             { v: 'storyteller', label: 'Story-led & emotional', desc: 'Like Steven Bartlett' },
             { v: 'contrarian', label: 'Contrarian & bold', desc: 'Like Naval, Codie Sanchez' },
             { v: 'practitioner', label: 'In-the-trenches operator', desc: 'Like Shaan Puri' },
@@ -933,7 +933,7 @@ function OnboardDifferentiation({ data, update }) {
           rows={5}
           value={data.differentiators}
           onChange={v => update('differentiators', v)}
-          placeholder="e.g. I'm not a pundit — I'm running deals every week at scale in two emerging markets. My stories are operator stories, not consultant stories."
+          placeholder="e.g. I'm not a pundit — I'm doing this work every week, not theorizing about it. My stories are operator stories, not consultant stories."
         />
       </Field>
     </div>
@@ -989,7 +989,7 @@ function OnboardPlatforms({ data, update }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {[
             { v: 'three_per_week', label: '3/week', desc: 'Mon · Wed · Fri' },
-            { v: 'daily', label: 'Daily', desc: '\'s recommendation' },
+            { v: 'daily', label: 'Daily', desc: 'Most recommended for growth' },
             { v: 'multiple_daily', label: 'Multiple/day', desc: 'Maximalist mode' }
           ].map(c => (
             <button
@@ -1018,7 +1018,7 @@ function OnboardGoals({ data, update }) {
           rows={3}
           value={data.primaryGoal}
           onChange={v => update('primaryGoal', v)}
-          placeholder="e.g. Inbound deal flow for TonePerks — 3 qualified telco intros per month."
+          placeholder="e.g. 3 qualified inbound leads per month from LinkedIn — replace cold outreach entirely."
         />
       </Field>
       <ChipInput
@@ -1026,7 +1026,7 @@ function OnboardGoals({ data, update }) {
         items={data.secondaryGoals}
         setItems={v => update('secondaryGoals', v)}
         suggestions={[
-          'Be the go-to voice on telco BD in MENA',
+          'Be the go-to voice in my niche',
           'Build an audience of 10K relevant followers',
           'Launch a paid product / course',
           'Get speaking invitations',
@@ -1489,7 +1489,11 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={() => setActiveView('stories')}
+                  onClick={() => {
+                    // Hand the Story Vault a one-shot signal to open the voice modal on mount
+                    try { sessionStorage.setItem('autoOpenVoice', '1'); } catch {}
+                    setActiveView('stories');
+                  }}
                   className="px-6 py-3 bg-stone-900 text-stone-50 font-sans text-sm hover:bg-stone-800 inline-flex items-center gap-2"
                 >
                   <Mic className="w-4 h-4" /> Speak my first story
@@ -1825,6 +1829,19 @@ function StoryVault({ stories, saveStories, profile }) {
     'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
   );
 
+  // If the dashboard Welcome CTA set the one-shot flag, auto-open the voice
+  // capture modal so the user lands ready to record (saves a click).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (sessionStorage.getItem('autoOpenVoice') === '1' && voiceSupported) {
+        sessionStorage.removeItem('autoOpenVoice');
+        setShowVoice(true);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const months = useMemo(() => {
     const m = [];
     const now = new Date();
@@ -2116,7 +2133,6 @@ function StoryRow({ story, onEdit, onDelete }) {
 
 function StoryForm({ story, months, profile, onSave, onCancel }) {
   useEscape(onCancel);
-  useBodyScrollLock(true);
   const [s, setS] = useState(story || { 
     title: '', lesson: '', emotion: '', month: months[0], category: 'pain',
     context: '', conflict: '', resolution: '', tags: [], framework: 'general',
@@ -2265,7 +2281,7 @@ Help refine this story. Return ONLY valid JSON:
         <div className="space-y-4">
           <div>
             <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">Story title (one line)</label>
-            <input value={s.title} onChange={e => setS({ ...s, title: e.target.value })} placeholder="e.g. The Jazz RFI we won by reframing the question" className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
+            <input value={s.title} onChange={e => setS({ ...s, title: e.target.value })} placeholder="e.g. The pitch I almost lost by trying to look smart" className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
           </div>
           
           {(activeFramework === 'StoryArc' || activeFramework === 'BeforeAfter' || activeFramework === 'Failure') && (
@@ -2333,7 +2349,7 @@ Their context:
 
 Build a deep, specific ICP. Return ONLY valid JSON:
 {
-  "name": "Short label like 'BD Lead Burning Out at MENA Telco'",
+  "name": "Short label like 'Solo SaaS Founder Stuck Between $5k–15k MRR'",
   "title": "Specific job title",
   "demographics": "Age, location, seniority, company size",
   "psychographics": "What they believe, fear, aspire to",
@@ -2438,7 +2454,7 @@ function ICPSeedGenerator({ onGenerate, generating, suggestions }) {
         <input
           value={seed}
           onChange={e => setSeed(e.target.value)}
-          placeholder="e.g. Tier-1 telco BD leaders in MENA stuck in legal limbo"
+          placeholder="e.g. Solo SaaS founders past first 10 paying customers, stuck between k and k MRR"
           className="flex-1 bg-stone-900 border border-stone-700 px-4 py-3 font-sans text-sm text-stone-50 placeholder:text-stone-500 outline-none"
           onKeyDown={e => { if (e.key === 'Enter') onGenerate(seed); }}
         />
@@ -2598,7 +2614,6 @@ function ICPCard({ icp, onEdit, onDelete }) {
 
 function ICPForm({ icp, onSave, onCancel }) {
   useEscape(onCancel);
-  useBodyScrollLock(true);
   const [s, setS] = useState(icp || { 
     name: '', title: '', demographics: '', psychographics: '', dailyReality: '',
     topPains: [], topGoals: [], objections: [], wateringHoles: [],
@@ -2614,7 +2629,7 @@ function ICPForm({ icp, onSave, onCancel }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <Field label="Short name (e.g. 'BD Lead at Tier-1 Telco')">
+          <Field label="Short name (e.g. 'Solo founder past $10k MRR')">
             <input value={s.name} onChange={e => setS({ ...s, name: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
           </Field>
           <Field label="Specific job title">
@@ -2658,28 +2673,28 @@ function ICPForm({ icp, onSave, onCancel }) {
 // ============= HOOK LIBRARY =============
 const HOOK_TEMPLATES = [
   // PAIN
-  { id: 'p1', category: 'pain', template: '[Number] mistakes I made [doing X] before [breakthrough].', example: '5 mistakes I made structuring telco partnerships before my first signed MOU.' },
-  { id: 'p2', category: 'pain', template: 'I spent [time] [doing X]. It almost broke me. Here\'s what I learned.', example: 'I spent 8 months chasing a Jazz partnership. It almost broke me. Here\'s what I learned.' },
-  { id: 'p3', category: 'pain', template: 'The [adjective] truth about [topic] no one tells you:', example: 'The brutal truth about MENA partnerships no one tells you:' },
+  { id: 'p1', category: 'pain', template: '[Number] mistakes I made [doing X] before [breakthrough].', example: '5 mistakes I made before my first 10 paying customers.' },
+  { id: 'p2', category: 'pain', template: 'I spent [time] [doing X]. It almost broke me. Here\'s what I learned.', example: 'I spent 8 months chasing a deal that never closed. It almost broke me. Here\'s what I learned.' },
+  { id: 'p3', category: 'pain', template: 'The [adjective] truth about [topic] no one tells you:', example: 'The brutal truth about B2B sales no one tells you:' },
   { id: 'p4', category: 'pain', template: 'If you\'re [doing X], stop. Here\'s why.', example: 'If you\'re sending decks before doing discovery calls, stop. Here\'s why.' },
   { id: 'p5', category: 'pain', template: '[Common belief] is wrong. Here\'s what actually [worked/works]:', example: '"Build the deck first" is wrong. Here\'s what actually got my last 3 deals signed:' },
-  { id: 'p6', category: 'pain', template: 'I almost lost [X] because I [did Y]. Don\'t make my mistake.', example: 'I almost lost a 6-figure deal because I optimized the wrong KPI. Don\'t make my mistake.' },
-  
+  { id: 'p6', category: 'pain', template: 'I almost lost [X] because I [did Y]. Don\'t make my mistake.', example: 'I almost lost a 6-figure deal because I optimized the wrong metric. Don\'t make my mistake.' },
+
   // PRIZE
-  { id: 'pr1', category: 'prize', template: 'How I went from [before] to [after] in [timeframe]:', example: 'How I went from cold outreach to inbound deal flow in 90 days:' },
-  { id: 'pr2', category: 'prize', template: 'The [specific action] that [unexpected result]:', example: 'The 14-line email that landed me a meeting with a tier-1 telco CCO:' },
-  { id: 'pr3', category: 'prize', template: '[Result/outcome]. Here\'s the exact playbook:', example: '4x ROI on a collection campaign. Here\'s the exact playbook:' },
-  { id: 'pr4', category: 'prize', template: 'I just [achievement]. Here are the [N] things that mattered:', example: 'I just signed an MOU in 47 days. Here are the 6 things that mattered:' },
-  { id: 'pr5', category: 'prize', template: 'You don\'t need [common requirement] to [outcome]. You need [your insight].', example: 'You don\'t need a Big-4 background to get into telco BD. You need to ship one good RFI response.' },
-  { id: 'pr6', category: 'prize', template: 'A [adjective] way to [achieve outcome] (that nobody talks about):', example: 'A counterintuitive way to win telco RFIs (that nobody talks about):' },
-  
+  { id: 'pr1', category: 'prize', template: 'How I went from [before] to [after] in [timeframe]:', example: 'How I went from cold outreach to inbound leads in 90 days:' },
+  { id: 'pr2', category: 'prize', template: 'The [specific action] that [unexpected result]:', example: 'The 14-line email that landed me a meeting with a Fortune-500 CEO:' },
+  { id: 'pr3', category: 'prize', template: '[Result/outcome]. Here\'s the exact playbook:', example: '4x ROI on a single LinkedIn campaign. Here\'s the exact playbook:' },
+  { id: 'pr4', category: 'prize', template: 'I just [achievement]. Here are the [N] things that mattered:', example: 'I just closed a 6-figure deal in 47 days. Here are the 6 things that mattered:' },
+  { id: 'pr5', category: 'prize', template: 'You don\'t need [common requirement] to [outcome]. You need [your insight].', example: 'You don\'t need a brand-name resume to land enterprise deals. You need one great case study.' },
+  { id: 'pr6', category: 'prize', template: 'A [adjective] way to [achieve outcome] (that nobody talks about):', example: 'A counterintuitive way to win enterprise RFPs (that nobody talks about):' },
+
   // NEWS
-  { id: 'n1', category: 'news', template: '[Recent event/news]. Here\'s what it actually means for [audience]:', example: 'Saudi Telecom\'s rebrand. Here\'s what it actually means for partnership pipelines:' },
-  { id: 'n2', category: 'news', template: 'Everyone\'s talking about [X]. Almost everyone is wrong.', example: 'Everyone\'s talking about AI in telco. Almost everyone is wrong about where the value is.' },
-  { id: 'n3', category: 'news', template: '[Public figure] said [X]. I disagree. Here\'s why:', example: 'A telco CEO said "BD is dying." I disagree. Here\'s why:' },
-  { id: 'n4', category: 'news', template: 'A [event] happened this week. Three lessons for [audience]:', example: 'The Ufone-Telenor merger closed this week. Three lessons for telco BDs:' },
-  { id: 'n5', category: 'news', template: '[Industry trend] is being misread. The real signal is [Y].', example: 'The "5G monetization problem" is being misread. The real signal is in voice services.' },
-  { id: 'n6', category: 'news', template: 'I\'ve watched [X] play out [N] times. Here\'s what usually happens next:', example: 'I\'ve watched telco mergers play out 4 times. Here\'s what usually happens to partnerships:' }
+  { id: 'n1', category: 'news', template: '[Recent event/news]. Here\'s what it actually means for [audience]:', example: 'OpenAI\'s latest release. Here\'s what it actually means for solo founders:' },
+  { id: 'n2', category: 'news', template: 'Everyone\'s talking about [X]. Almost everyone is wrong.', example: 'Everyone\'s talking about AI agents. Almost everyone is wrong about where the value is.' },
+  { id: 'n3', category: 'news', template: '[Public figure] said [X]. I disagree. Here\'s why:', example: 'A famous VC said "cold outreach is dead." I disagree. Here\'s why:' },
+  { id: 'n4', category: 'news', template: 'A [event] happened this week. Three lessons for [audience]:', example: 'A major acquisition closed this week. Three lessons for founders:' },
+  { id: 'n5', category: 'news', template: '[Industry trend] is being misread. The real signal is [Y].', example: 'The "AI commoditization problem" is being misread. The real signal is in workflow.' },
+  { id: 'n6', category: 'news', template: 'I\'ve watched [X] play out [N] times. Here\'s what usually happens next:', example: 'I\'ve watched startup acquisitions play out 4 times. Here\'s what usually happens next:' }
 ];
 
 function HookLibrary({ hooks, saveHooks, profile }) {
@@ -3247,7 +3262,6 @@ Return ONLY valid JSON:
 
 function GeneratedContentPreview({ content, story, onSave, onDiscard, onCopy, copiedId }) {
   useEscape(onDiscard);
-  useBodyScrollLock(true);
   return (
     <div className="bg-stone-50 border-2 border-stone-900 p-8 space-y-6 animate-slideIn">
       <div className="flex justify-between items-center">
@@ -3653,7 +3667,7 @@ Return ONLY valid JSON:
               <div className="font-display text-2xl font-light text-stone-900 mb-5">Which week?</div>
               <div className="space-y-4 mb-6">
                 <Field label="Batch name (optional)">
-                  <Input value={batchData.name} onChange={v => setBatchData({ ...batchData, name: v })} placeholder="e.g. Week of June 5 - Jazz partnership stories" />
+                  <Input value={batchData.name} onChange={v => setBatchData({ ...batchData, name: v })} placeholder="e.g. Week of pricing-objection stories" />
                 </Field>
                 <Field label="Week starting (Monday)">
                   <input type="date" value={batchData.weekOf} onChange={e => setBatchData({ ...batchData, weekOf: e.target.value })} className="w-full px-4 py-3 bg-stone-50 border border-stone-300 font-sans" />
@@ -3916,7 +3930,6 @@ function FunnelCard({ funnel, onEdit, onDelete }) {
 
 function FunnelForm({ funnel, onSave, onCancel }) {
   useEscape(onCancel);
-  useBodyScrollLock(true);
   const [f, setF] = useState(funnel || { name: '', description: '', stages: [{ name: '', desc: '' }] });
   return (
     <div className="bg-stone-950 text-stone-50 p-8 mb-6 animate-slideIn">
@@ -4885,16 +4898,35 @@ function ProfileSettings({ profile, saveProfile, setShowOnboarding }) {
         {activeTab === 'danger' && (
           <div className="space-y-6">
             <RestoreProfileSnapshot saveProfile={saveProfile} />
-            <div className="bg-red-50 border border-red-200 p-6">
-              <div className="font-display text-xl text-red-900 mb-2">Reset Onboarding</div>
-              <div className="font-sans text-sm text-red-800 mb-4">This will walk you through the 10-step setup again. Your stories, content, and analytics will not be deleted.</div>
+
+            {/* Data export — GDPR right to portability */}
+            <div className="bg-white border border-stone-200 p-6">
+              <div className="font-display text-xl text-stone-900 mb-2">Export your data</div>
+              <div className="font-sans text-sm text-stone-700 mb-4 leading-relaxed">
+                Download everything Brand OS knows about you as a single JSON file — profile, stories, content, ICPs, conversations, all of it.
+                Yours to keep, move, or import elsewhere.
+              </div>
+              <a
+                href="/api/export"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-stone-900 text-stone-50 font-sans text-sm hover:bg-stone-800"
+              >
+                <Download className="w-4 h-4" /> Download my data (.json)
+              </a>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-6">
+              <div className="font-display text-xl text-stone-900 mb-2">Reset Onboarding</div>
+              <div className="font-sans text-sm text-stone-700 mb-4">This will walk you through the 10-step setup again. Your stories, content, and analytics will not be deleted.</div>
               <button
                 onClick={async () => { if (await window.brandConfirm('Restart onboarding? Your stories and content will be kept.')) setShowOnboarding(true); }}
-                className="px-5 py-2.5 bg-red-900 text-red-50 font-sans text-sm"
+                className="px-5 py-2.5 bg-amber-700 text-amber-50 font-sans text-sm hover:bg-amber-800"
               >
                 Restart onboarding
               </button>
             </div>
+
+            {/* Account deletion — GDPR right to erasure */}
+            <DeleteAccountSection />
           </div>
         )}
 
@@ -5683,7 +5715,7 @@ function PhotoMiningRitual({ photoMining, savePhotoMining, stories, saveStories,
             <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-stone-200 inline-block"></span> Untouched</span>
           </div>
         </div>
-        <div className="grid grid-cols-12 gap-1.5">
+        <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-1.5">
           {months.map(m => {
             const entry = photoMining?.[m.key];
             const hasStory = entry?.shouldStory;
@@ -5745,7 +5777,7 @@ function PhotoMiningRitual({ photoMining, savePhotoMining, stories, saveStories,
                 {draft.shouldStory && (
                   <div className="space-y-3 mt-4">
                     <Field label="Story title (one line)">
-                      <Input value={draft.storyTitle} onChange={v => setDraft({ ...draft, storyTitle: v })} placeholder="e.g. The Jazz pitch I almost walked out of" />
+                      <Input value={draft.storyTitle} onChange={v => setDraft({ ...draft, storyTitle: v })} placeholder="e.g. The day I almost shut down the business" />
                     </Field>
                     <Field label="Category">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -6046,7 +6078,7 @@ Return ONLY valid JSON:
         <div className="font-sans text-sm text-stone-300 mb-5">Give us the rough product and target. We'll draft the landing page, fields, and 3-email nurture.</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <Field label="Concept name (working title)">
-            <input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. The TonePerks Voice-Ad Index" />
+            <input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. The Founder's Pricing Playbook" />
           </Field>
           <Field label="Target ICP">
             <select value={draft.targetIcp} onChange={e => setDraft({ ...draft, targetIcp: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm">
@@ -6056,7 +6088,7 @@ Return ONLY valid JSON:
           </Field>
         </div>
         <Field label="Product concept (one paragraph — what it is, who it's for, why now)">
-          <textarea rows={4} value={draft.productConcept} onChange={e => setDraft({ ...draft, productConcept: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. A quarterly index of the most monetizable voice-channel formats in MENA. Built for telco BD heads. Launches when we have data from 50 telcos." />
+          <textarea rows={4} value={draft.productConcept} onChange={e => setDraft({ ...draft, productConcept: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. A monthly report on what's actually working in B2B SaaS sales right now. Built for solo founders. Launches when we have signals from 100 companies." />
         </Field>
         <button onClick={generateDraft} disabled={!draft.productConcept || generating} className="mt-4 px-5 py-2.5 bg-stone-50 text-stone-900 font-sans text-sm disabled:opacity-30 inline-flex items-center gap-2">
           {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> Drafting...</> : <><Wand2 className="w-4 h-4" /> Draft it</>}
@@ -6311,7 +6343,7 @@ Return ONLY valid JSON:
         <div className="font-display text-2xl font-light mb-5">Plan a webinar</div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <Field label="Working title">
-            <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. The 90-day MOU framework" />
+            <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. The 90-day inbound playbook" />
           </Field>
           <Field label="Duration (minutes)">
             <select value={draft.duration} onChange={e => setDraft({ ...draft, duration: parseInt(e.target.value) })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm">
@@ -6326,7 +6358,7 @@ Return ONLY valid JSON:
           </Field>
         </div>
         <Field label="The promise (what they'll walk away with)">
-          <textarea rows={2} value={draft.promise} onChange={e => setDraft({ ...draft, promise: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. A 5-step framework for getting from cold pitch to signed MOU in under 90 days." />
+          <textarea rows={2} value={draft.promise} onChange={e => setDraft({ ...draft, promise: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. A 5-step framework for getting from cold lead to signed contract in under 90 days." />
         </Field>
         <button onClick={generate} disabled={!draft.title || !draft.promise || generating} className="mt-4 px-5 py-2.5 bg-stone-50 text-stone-900 font-sans text-sm disabled:opacity-30 inline-flex items-center gap-2">
           {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> Building agenda...</> : <><Wand2 className="w-4 h-4" /> Build agenda + slides</>}
@@ -6826,7 +6858,7 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
             <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-amber-800 mb-3">The 4-step play</div>
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { n: '01', t: 'Pick 1-3 topics', d: 'Niche enough that you can own them. Not "marketing" — "voice-channel partnerships in MENA telco".' },
+                { n: '01', t: 'Pick 1-3 topics', d: 'Niche enough that you can own them. Not "marketing" — "pricing strategy for B2B SaaS under $1M ARR".' },
                 { n: '02', t: 'Take a stance', d: 'Boring summaries don\'t get cited. Strong, defensible opinions get quoted.' },
                 { n: '03', t: 'Publish long-form', d: 'Newsletter, blog, podcast. Aim for 5+ pieces per topic. Cite your own work across them.' },
                 { n: '04', t: 'Test queries weekly', d: 'Ask ChatGPT/Claude/Perplexity questions in your space. Are you appearing? If not, what\'s missing?' }
@@ -6849,10 +6881,10 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
             <div className="font-sans text-sm text-stone-300 mb-5">Niche enough that 5 long-form pieces would make you the obvious answer.</div>
             <div className="space-y-3">
               <Field label="Topic name (very specific)">
-                <input value={topicDraft.name} onChange={e => setTopicDraft({ ...topicDraft, name: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. Voice-channel monetization in MENA telcos" />
+                <input value={topicDraft.name} onChange={e => setTopicDraft({ ...topicDraft, name: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. Pricing strategy for B2B SaaS under $1M ARR" />
               </Field>
               <Field label="Your stance (the contrarian or distinctive take)">
-                <textarea rows={3} value={topicDraft.stance} onChange={e => setTopicDraft({ ...topicDraft, stance: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. 'The voice channel is the most undervalued asset in MENA telco. Most operators sell minutes when they should be selling reach.'" />
+                <textarea rows={3} value={topicDraft.stance} onChange={e => setTopicDraft({ ...topicDraft, stance: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder="e.g. 'Most B2B SaaS founders price too low for too long. The right move is to raise prices BEFORE you feel ready.'" />
               </Field>
               <button onClick={addTopic} disabled={!topicDraft.name || !topicDraft.stance} className="px-5 py-2.5 bg-stone-50 text-stone-900 font-sans text-sm disabled:opacity-30 inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" /> Stake claim
@@ -7372,7 +7404,6 @@ function ConversationsHub({ conversations, saveConversations, profile, contentPi
 
 function NewConversationForm({ onSave, onCancel, contentPieces, prefill }) {
   useEscape(onCancel);
-  useBodyScrollLock(true);
   const [c, setC] = useState({
     source: prefill?.source || 'LinkedIn',
     name: prefill?.name || '',
@@ -7665,7 +7696,6 @@ function OutboundPipeline({ outbound, saveOutbound, profile, stories }) {
 
 function NewPitchForm({ stories, onSave, onCancel }) {
   useEscape(onCancel);
-  useBodyScrollLock(true);
   const [p, setP] = useState({ type: 'podcast', target: '', contactName: '', contactRole: '', stage: 'researching', anchorStoryId: '', pitchAngle: '', notes: '', followUpAt: '' });
   return (
     <div className="bg-stone-950 text-stone-50 p-7 mb-6">
@@ -8328,7 +8358,6 @@ function NewsletterStudio({ newsletters, saveNewsletters, stories, profile, setA
 
 function NewsletterEditor({ newsletter, stories, profile, onSave, onCancel }) {
   useEscape(onCancel);
-  useBodyScrollLock(true);
   const [n, setN] = useState(newsletter);
   const [generatingSection, setGeneratingSection] = useState(null);
   const [generatingFull, setGeneratingFull] = useState(false);
@@ -8780,7 +8809,6 @@ function ProofVault({ proof, saveProof, contentPieces, profile }) {
 
 function ProofForm({ proof, onSave, onCancel }) {
   useEscape(onCancel);
-  useBodyScrollLock(true);
   const [p, setP] = useState(proof || { type: 'testimonial', content: '', source: '', value: '', when: '', weaveContext: '', tags: [], imageUrl: '' });
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
@@ -8830,13 +8858,13 @@ function ProofForm({ proof, onSave, onCancel }) {
         </Field>
       </div>
       <Field label={p.type === 'testimonial' ? 'The quote' : 'The proof / what happened'}>
-        <textarea rows={4} value={p.content} onChange={e => setP({ ...p, content: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder={p.type === 'testimonial' ? 'e.g. "Umair structured the partnership in 6 weeks. We\'d been trying for 18 months."' : 'e.g. Signed an MOU with a tier-1 telco in 47 days from cold outreach.'} />
+        <textarea rows={4} value={p.content} onChange={e => setP({ ...p, content: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" placeholder={p.type === 'testimonial' ? 'e.g. "Their framework helped us close our biggest deal in 6 weeks. We\'d been trying for 18 months."' : 'e.g. Signed a 6-figure contract in 47 days from a cold LinkedIn DM.'} />
       </Field>
       <Field label={p.type === 'testimonial' ? 'Who said it (Name, Role, Company)' : 'Source / context'}>
         <input value={p.source} onChange={e => setP({ ...p, source: e.target.value })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
       </Field>
       <Field label="Where to weave this in (notes for future-you)">
-        <textarea rows={2} value={p.weaveContext} onChange={e => setP({ ...p, weaveContext: e.target.value })} placeholder="e.g. Use when posting about cold outreach speed, or in any tier-1 telco BD pitch." className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
+        <textarea rows={2} value={p.weaveContext} onChange={e => setP({ ...p, weaveContext: e.target.value })} placeholder="e.g. Use when posting about cold outreach speed, or any B2B sales pitch." className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
       </Field>
       <Field label="Tags (comma separated)">
         <input value={(p.tags || []).join(', ')} onChange={e => setP({ ...p, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
@@ -9351,19 +9379,9 @@ function DailyBriefingCard({ profile, stories, ideas, briefing, saveBriefing, se
   const todayBriefing = briefing[todayKey];
   const [generating, setGenerating] = useState(false);
 
-  // Auto-generate the briefing on first dashboard visit each day — but ONLY if the
-  // user has enough source material to make a useful one. Otherwise show the manual
-  // generate button so they don't see a stale/empty briefing.
-  useEffect(() => {
-    if (todayBriefing || generating) return;
-    if (stories.length < 1) return; // need at least one story to anchor the briefing
-    if (!profile?.voice) return;     // need basic profile
-    const sessionFlag = `briefingAutoTried_${todayKey}`;
-    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(sessionFlag)) return;
-    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(sessionFlag, '1');
-    generateBriefing();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayKey]);
+  // No silent auto-generation — that quietly burns an AI call from the user's
+  // hourly quota without their consent. The "Generate briefing" button stays
+  // visible until they click it. (Earlier versions auto-fired here.)
 
   const generateBriefing = async () => {
     setGenerating(true);
@@ -10182,6 +10200,94 @@ function BookmarkletModal({ onClose }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============= DELETE ACCOUNT =============
+// GDPR right to erasure. Requires the user to type their email to confirm.
+function DeleteAccountSection() {
+  const [expanded, setExpanded] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirmEmail) return;
+    if (typeof window !== 'undefined') {
+      if (!(await window.brandConfirm(`Permanently delete your account and all your data? This cannot be undone.`))) return;
+    }
+    setDeleting(true);
+    try {
+      const r = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ confirmEmail })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: data.error || 'Deletion failed' } }));
+        }
+      } else {
+        // Sign out client-side and redirect to landing
+        if (typeof window !== 'undefined') {
+          window.location.href = '/?deleted=1';
+        }
+      }
+    } catch (e) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: 'Deletion failed: ' + e.message } }));
+      }
+    }
+    setDeleting(false);
+  };
+
+  return (
+    <div className="bg-red-50 border-2 border-red-300 p-6">
+      <div className="font-display text-xl text-red-900 mb-2">Delete account permanently</div>
+      <div className="font-sans text-sm text-red-800 mb-4 leading-relaxed">
+        Removes all your data and your Brand OS account. Cannot be undone.
+        Export your data first if you want a backup.
+      </div>
+      {!expanded ? (
+        <button
+          onClick={() => setExpanded(true)}
+          className="px-5 py-2.5 border border-red-300 hover:border-red-700 font-sans text-sm text-red-700"
+        >
+          Delete my account
+        </button>
+      ) : (
+        <div className="space-y-3 bg-white border border-red-300 p-4">
+          <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-red-700">Final confirmation</div>
+          <div className="font-sans text-sm text-stone-800 leading-relaxed">
+            Type the email address on your account below, then click <strong>Permanently delete</strong>.
+          </div>
+          <input
+            type="email"
+            value={confirmEmail}
+            onChange={(e) => setConfirmEmail(e.target.value)}
+            placeholder="your-email@example.com"
+            className="w-full px-3 py-2 border border-stone-300 font-mono text-sm"
+            autoComplete="off"
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => { setExpanded(false); setConfirmEmail(''); }}
+              className="px-4 py-2 font-sans text-sm text-stone-700"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={!confirmEmail || deleting}
+              className="px-5 py-2 bg-red-700 hover:bg-red-800 text-red-50 font-sans text-sm disabled:opacity-30 inline-flex items-center gap-2"
+            >
+              {deleting ? <><Loader2 className="w-4 h-4 animate-spin" /> Deleting</> : <>Permanently delete</>}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
