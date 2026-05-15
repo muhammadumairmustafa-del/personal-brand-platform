@@ -407,7 +407,7 @@ export default function PersonalBrandPlatform() {
           />
         )}
         {activeView === 'coach' && (
-          <AICoach profile={profile} stories={stories} saveStories={saveStories} />
+          <AICoach profile={profile} stories={stories} saveStories={saveStories} setActiveView={setActiveView} />
         )}
         {activeView === 'profile' && (
           <ProfileSettings profile={profile} saveProfile={saveProfile} setShowOnboarding={setShowOnboarding} />
@@ -1405,6 +1405,11 @@ function SidebarAiMeter() {
 
 // ============= DASHBOARD =============
 function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActiveView, analytics, icps, batches, dna = {}, photoMining = {}, optins = [], revenuePlan = {}, aio = { topics: [], queries: [] }, ideas = [], briefing = {}, saveBriefing = () => {}, conversations = [], outbound = [], swipeFile = [], newsletters = [], proof = [] }) {
+  // Detect Web Speech API support so the Welcome "Speak" button can fall back gracefully
+  const voiceSupported = typeof window !== 'undefined' && (
+    'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
+  );
+
   const completion = useMemo(() => {
     const profileScore = profile?.transformation && profile.audiences?.length && profile.pains?.length ? 100 : 60;
     const storiesScore = Math.min(100, (stories.length / 10) * 100);
@@ -1488,16 +1493,25 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
                 Tap the mic, talk for 30 seconds about something that happened this week — in any language. AI translates, structures it, and turns it into ready-to-publish posts.
               </p>
               <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => {
-                    // Hand the Story Vault a one-shot signal to open the voice modal on mount
-                    try { sessionStorage.setItem('autoOpenVoice', '1'); } catch {}
-                    setActiveView('stories');
-                  }}
-                  className="px-6 py-3 bg-stone-900 text-stone-50 font-sans text-sm hover:bg-stone-800 inline-flex items-center gap-2"
-                >
-                  <Mic className="w-4 h-4" /> Speak my first story
-                </button>
+                {voiceSupported ? (
+                  <button
+                    onClick={() => {
+                      // Hand the Story Vault a one-shot signal to open the voice modal on mount
+                      try { sessionStorage.setItem('autoOpenVoice', '1'); } catch {}
+                      setActiveView('stories');
+                    }}
+                    className="px-6 py-3 bg-stone-900 text-stone-50 font-sans text-sm hover:bg-stone-800 inline-flex items-center gap-2"
+                  >
+                    <Mic className="w-4 h-4" /> Speak my first story
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setActiveView('stories')}
+                    className="px-6 py-3 bg-stone-900 text-stone-50 font-sans text-sm hover:bg-stone-800 inline-flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> Type my first story
+                  </button>
+                )}
                 <button
                   onClick={() => setActiveView('coach')}
                   className="px-6 py-3 border border-stone-300 hover:border-stone-900 font-sans text-sm text-stone-800 inline-flex items-center gap-2"
@@ -1505,6 +1519,11 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
                   <Brain className="w-4 h-4" /> Or chat with the AI Coach
                 </button>
               </div>
+              {!voiceSupported && (
+                <div className="font-sans text-xs text-stone-500 mt-3 italic">
+                  Voice capture needs Chrome, Edge, or Safari. You can still type stories on any browser.
+                </div>
+              )}
             </div>
             <div className="lg:col-span-2 bg-stone-50 border border-stone-200 p-5">
               <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-3">Suggested order</div>
@@ -4561,11 +4580,12 @@ function Analytics({ analytics, saveAnalytics, contentPieces, stories, calendar,
 }
 
 // ============= AI COACH =============
-function AICoach({ profile, stories, saveStories }) {
+function AICoach({ profile, stories, saveStories, setActiveView }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [extractedStory, setExtractedStory] = useState(null);
+  const [lastSavedStoryId, setLastSavedStoryId] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const messagesEndRef = useRef(null);
   const hasLoadedRef = useRef(false);
@@ -4682,9 +4702,14 @@ Otherwise just keep asking great questions. Be human, warm, but sharp. Push them
   };
 
   const saveExtracted = () => {
-    saveStories([{ ...extractedStory, id: Date.now(), createdAt: new Date().toISOString() }, ...stories]);
+    const newId = Date.now();
+    saveStories([{ ...extractedStory, id: newId, createdAt: new Date().toISOString() }, ...stories]);
+    setLastSavedStoryId(newId);
     setExtractedStory(null);
-    setMessages([...messages, { role: 'assistant', content: '✓ Saved to your Story Vault. Ready for the next one — what else from the last 30 days?' }]);
+    setMessages([
+      ...messages,
+      { role: 'assistant', content: '✓ Saved to your Story Vault.\n\nWant to **turn this into content** right now — a LinkedIn post, an X thread, a newsletter section? Or **mine another story** while we\'re warmed up?' }
+    ]);
   };
 
   return (
@@ -4767,7 +4792,32 @@ Otherwise just keep asking great questions. Be human, warm, but sharp. Push them
           
           <div ref={messagesEndRef} />
         </div>
-        
+
+        {/* "What now?" CTAs — appear right after a story is saved */}
+        {lastSavedStoryId && (
+          <div className="px-5 py-3 border-t border-stone-200 bg-emerald-50 flex flex-wrap gap-2 items-center">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-emerald-800 font-semibold">What next?</span>
+            <button
+              onClick={() => setActiveView && setActiveView('content')}
+              className="px-3 py-1.5 bg-stone-900 text-stone-50 font-sans text-xs inline-flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Generate content from this
+            </button>
+            <button
+              onClick={() => setActiveView && setActiveView('stories')}
+              className="px-3 py-1.5 border border-stone-300 hover:border-stone-500 font-sans text-xs inline-flex items-center gap-1.5"
+            >
+              <BookOpen className="w-3.5 h-3.5" /> View in vault
+            </button>
+            <button
+              onClick={() => setLastSavedStoryId(null)}
+              className="px-3 py-1.5 font-sans text-xs text-stone-600 ml-auto"
+            >
+              Keep chatting
+            </button>
+          </div>
+        )}
+
         <div className="p-5 border-t border-stone-200 bg-stone-50">
           <div className="flex gap-3">
             <input
@@ -4776,8 +4826,9 @@ Otherwise just keep asking great questions. Be human, warm, but sharp. Push them
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
               placeholder="Tell me what happened..."
               className="flex-1 bg-white border border-stone-300 px-4 py-3 outline-none font-sans text-sm"
+              aria-label="Message to AI Coach"
             />
-            <button onClick={send} disabled={!input.trim() || thinking} className="px-5 bg-stone-900 text-stone-50 disabled:opacity-30">
+            <button onClick={send} disabled={!input.trim() || thinking} aria-label="Send message" className="px-5 bg-stone-900 text-stone-50 disabled:opacity-30">
               <Send className="w-4 h-4" />
             </button>
           </div>
@@ -10210,6 +10261,22 @@ function DeleteAccountSection() {
   const [expanded, setExpanded] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [accountEmail, setAccountEmail] = useState(null);
+
+  // Fetch the user's email once expanded so we can show what they need to type
+  useEffect(() => {
+    if (!expanded || accountEmail) return;
+    (async () => {
+      try {
+        const r = await fetch('/api/me', { credentials: 'include' });
+        if (r.ok) {
+          const d = await r.json();
+          setAccountEmail(d.email || null);
+        }
+      } catch {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
 
   const handleDelete = async () => {
     if (!confirmEmail) return;
@@ -10263,6 +10330,12 @@ function DeleteAccountSection() {
           <div className="font-sans text-sm text-stone-800 leading-relaxed">
             Type the email address on your account below, then click <strong>Permanently delete</strong>.
           </div>
+          {accountEmail && (
+            <div className="bg-stone-50 border border-stone-200 px-3 py-2 flex items-center justify-between gap-3">
+              <div className="font-sans text-xs text-stone-600">Your account email:</div>
+              <div className="font-mono text-sm text-stone-900 break-all">{accountEmail}</div>
+            </div>
+          )}
           <input
             type="email"
             value={confirmEmail}
