@@ -29,7 +29,8 @@ const ALLOWED_KEYS = new Set([
   'swipeFile',
   'newsletters',
   'proof',
-  'publicProfile'
+  'publicProfile',
+  'coachSession'
 ]);
 
 function validateKey(rawKey) {
@@ -39,8 +40,14 @@ function validateKey(rawKey) {
   } catch {
     return null;
   }
-  if (!ALLOWED_KEYS.has(decoded)) return null;
-  return decoded;
+  if (ALLOWED_KEYS.has(decoded)) return decoded;
+  // Allow reads of `_history:<key>` where <key> is itself allowlisted. This is
+  // how the client fetches the "last saved snapshot" for restore.
+  if (decoded.startsWith('_history:')) {
+    const inner = decoded.slice('_history:'.length);
+    if (ALLOWED_KEYS.has(inner)) return decoded;
+  }
+  return null;
 }
 
 async function requireUser() {
@@ -91,6 +98,36 @@ export async function PUT(request, { params }) {
   let parsed;
   try { parsed = JSON.parse(body.value); }
   catch { return NextResponse.json({ error: 'value must be valid stringified JSON' }, { status: 400 }); }
+
+  // Before overwriting, snapshot the current value to `_history:<key>` so the
+  // user can "Restore last save" if they regret an edit. Skipped for internal
+  // bookkeeping keys to avoid bloat.
+  const SNAPSHOT_KEYS = new Set([
+    'profile','stories','content','funnels','icps','hooks','batches','dna',
+    'photoMining','optins','revenuePlan','aio','ideas','conversations','outbound',
+    'swipeFile','newsletters','proof','publicProfile'
+  ]);
+  if (SNAPSHOT_KEYS.has(key)) {
+    const { data: prior } = await auth.supabase
+      .from('user_data')
+      .select('value')
+      .eq('user_id', auth.user.id)
+      .eq('key', key)
+      .maybeSingle();
+    if (prior?.value !== undefined) {
+      await auth.supabase
+        .from('user_data')
+        .upsert(
+          {
+            user_id: auth.user.id,
+            key: `_history:${key}`,
+            value: { snapshot: prior.value, savedAt: new Date().toISOString() },
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'user_id,key' }
+        );
+    }
+  }
 
   const { error } = await auth.supabase
     .from('user_data')

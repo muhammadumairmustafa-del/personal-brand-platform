@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import PersonalBrandPlatform from './PersonalBrandPlatform';
 
@@ -16,6 +16,17 @@ function installShims() {
       window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type, message } }));
     } catch {}
   };
+
+  // brandConfirm — async replacement for window.confirm with a styled UI.
+  // Usage: if (await window.brandConfirm('Delete?')) { ... }
+  window.brandConfirm = (message) => new Promise((resolve) => {
+    try {
+      window.dispatchEvent(new CustomEvent('brand-confirm-open', { detail: { message, resolve } }));
+    } catch {
+      // If event dispatch fails for some reason, fall back to native confirm
+      resolve(window.confirm(message));
+    }
+  });
 
   // window.storage — proxies to /api/data/[key]
   window.storage = {
@@ -74,6 +85,8 @@ function installShims() {
         fireToast('error', 'Network issue calling AI. Try again.');
         throw e;
       }
+      // Tell the rest of the app an AI call just happened so usage meters refresh.
+      try { window.dispatchEvent(new CustomEvent('brand-ai-call')); } catch {}
       if (!response.ok) {
         try {
           const err = await response.clone().json();
@@ -91,6 +104,73 @@ function installShims() {
     }
     return originalFetch(input, init);
   };
+}
+
+// ─── Global Confirm Dialog ──────────────────────────────────────────────
+// Listens for `brand-confirm-open` events, renders a styled modal, and
+// resolves the pending Promise when the user clicks Confirm or Cancel.
+function ConfirmHost() {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const resolverRef = useRef(null);
+
+  useEffect(() => {
+    const onOpen = (e) => {
+      setMessage(e.detail?.message || 'Are you sure?');
+      resolverRef.current = e.detail?.resolve;
+      setOpen(true);
+    };
+    window.addEventListener('brand-confirm-open', onOpen);
+    return () => window.removeEventListener('brand-confirm-open', onOpen);
+  }, []);
+
+  // ESC = cancel
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') resolve(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  const resolve = (val) => {
+    if (resolverRef.current) resolverRef.current(val);
+    resolverRef.current = null;
+    setOpen(false);
+  };
+
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 bg-stone-950/70 backdrop-blur-sm z-[110] flex items-center justify-center p-6 animate-fadeIn"
+      onClick={() => resolve(false)}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-white max-w-md w-full p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
+        <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-red-700 mb-3">Confirm</div>
+        <div className="text-base text-stone-900 leading-relaxed mb-6">{message}</div>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => resolve(false)}
+            className="px-5 py-2 border border-stone-300 hover:border-stone-500 text-sm text-stone-800"
+            autoFocus
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => resolve(true)}
+            className="px-5 py-2 bg-red-700 text-stone-50 text-sm hover:bg-red-800"
+          >
+            Yes, delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Global Toast Component ──────────────────────────────────────────────
@@ -160,8 +240,8 @@ export default function PlatformWrapper({ user }) {
 
   return (
     <>
-      {/* Floating account chip — top right */}
-      <div className="fixed top-4 right-4 z-[60] flex items-center gap-2 bg-white border border-stone-200 px-3 py-1.5 shadow-sm">
+      {/* Floating account chip — desktop top-right; on mobile, tucked below the top bar. */}
+      <div className="fixed top-16 right-2 lg:top-4 lg:right-4 z-[55] flex items-center gap-2 bg-white border border-stone-200 px-3 py-1.5 shadow-sm">
         <div className="w-6 h-6 rounded-full bg-stone-900 text-stone-50 flex items-center justify-center font-mono text-[10px] uppercase" aria-hidden="true">
           {(user?.email || '?').slice(0, 1)}
         </div>
@@ -178,6 +258,7 @@ export default function PlatformWrapper({ user }) {
 
       <PersonalBrandPlatform />
       <Toaster />
+      <ConfirmHost />
     </>
   );
 }

@@ -26,6 +26,133 @@ import {
   CircleDollarSign, ThumbsUp, Reply, MessageCircle, ScanLine
 } from 'lucide-react';
 
+// ============= SHARED HOOKS & UTILITIES =============
+
+// useEscape — call onEscape when user presses ESC. Idempotent.
+function useEscape(onEscape) {
+  useEffect(() => {
+    if (typeof window === 'undefined' || !onEscape) return;
+    const handler = (e) => { if (e.key === 'Escape') onEscape(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onEscape]);
+}
+
+// useBodyScrollLock — lock body scroll while a modal/drawer is open.
+function useBodyScrollLock(locked) {
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (locked) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [locked]);
+}
+
+// useDocTitle — set <title> for the current view.
+function useDocTitle(title) {
+  useEffect(() => {
+    if (typeof document === 'undefined' || !title) return;
+    const prev = document.title;
+    document.title = `${title} · Brand OS`;
+    return () => { document.title = prev; };
+  }, [title]);
+}
+
+// Defensive first-name helper. Falls back to a placeholder.
+function firstNameOf(profile) {
+  const n = profile?.name?.trim();
+  if (!n) return 'there';
+  const first = n.split(/\s+/)[0];
+  return first || 'there';
+}
+
+// AI rate-limit defaults — must match the values in app/api/ai/route.js
+const AI_HOUR_LIMIT = 30;
+const AI_DAY_LIMIT = 150;
+
+// useAiUsage — fetch and refresh the rate-limit counter from storage.
+// Auto-refreshes after every "brand-ai-success" event (dispatched by the fetch shim).
+function useAiUsage() {
+  const [usage, setUsage] = useState({ hourCount: 0, dayCount: 0, loaded: false });
+
+  const refresh = async () => {
+    try {
+      if (typeof window === 'undefined' || !window.storage) return;
+      const r = await window.storage.get('_aiUsage');
+      const parsed = r?.value ? JSON.parse(r.value) : {};
+      const now = Date.now();
+      const inHour = (now - (parsed.hourStart || 0)) < 60 * 60 * 1000;
+      const inDay = (now - (parsed.dayStart || 0)) < 24 * 60 * 60 * 1000;
+      setUsage({
+        hourCount: inHour ? (parsed.hourCount || 0) : 0,
+        dayCount: inDay ? (parsed.dayCount || 0) : 0,
+        loaded: true
+      });
+    } catch {
+      setUsage((u) => ({ ...u, loaded: true }));
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+    const onAi = () => { setTimeout(refresh, 300); };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('brand-ai-call', onAi);
+      return () => window.removeEventListener('brand-ai-call', onAi);
+    }
+  }, []);
+
+  return { ...usage, refresh };
+}
+
+// AiUsageMeter — small visual indicator. Drop anywhere a user might wonder
+// "why isn't the AI button doing anything?"
+function AiUsageMeter({ compact = false }) {
+  const { hourCount, dayCount, loaded } = useAiUsage();
+  if (!loaded) return null;
+
+  const hourPct = Math.min(100, (hourCount / AI_HOUR_LIMIT) * 100);
+  const dayPct = Math.min(100, (dayCount / AI_DAY_LIMIT) * 100);
+  const tone = hourPct >= 90 || dayPct >= 90 ? 'bg-red-600' : hourPct >= 70 || dayPct >= 70 ? 'bg-amber-500' : 'bg-emerald-600';
+
+  if (compact) {
+    return (
+      <div className="font-mono text-[10px] text-stone-500 flex items-center gap-1.5" title={`AI calls used — ${hourCount}/${AI_HOUR_LIMIT} this hour, ${dayCount}/${AI_DAY_LIMIT} today`}>
+        <span className={`inline-block w-1.5 h-1.5 rounded-full ${tone}`} />
+        AI {hourCount}/{AI_HOUR_LIMIT}h · {dayCount}/{AI_DAY_LIMIT}d
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-stone-200 p-4">
+      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">AI usage</div>
+      <div className="space-y-2.5">
+        <div>
+          <div className="flex justify-between font-sans text-xs text-stone-600 mb-1">
+            <span>This hour</span>
+            <span className="font-mono">{hourCount}/{AI_HOUR_LIMIT}</span>
+          </div>
+          <div className="h-1.5 bg-stone-200">
+            <div className={`h-full transition-all ${tone}`} style={{ width: `${hourPct}%` }} />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between font-sans text-xs text-stone-600 mb-1">
+            <span>Today</span>
+            <span className="font-mono">{dayCount}/{AI_DAY_LIMIT}</span>
+          </div>
+          <div className="h-1.5 bg-stone-200">
+            <div className={`h-full transition-all ${tone}`} style={{ width: `${dayPct}%` }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============= MAIN APP =============
 export default function PersonalBrandPlatform() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -58,6 +185,20 @@ export default function PersonalBrandPlatform() {
 
   // Close the mobile drawer whenever the user navigates to a new view
   useEffect(() => { setMobileNavOpen(false); }, [activeView]);
+  useBodyScrollLock(mobileNavOpen);
+
+  // Set the browser tab title based on the active view
+  const viewTitles = {
+    dashboard: 'Dashboard', health: 'Brand Health', profile: 'Profile', dna: 'Brand DNA',
+    icp: 'ICP Lab', ideas: 'Idea Inbox', mining: 'Photo Mining', stories: 'Story Vault',
+    hooks: 'Hook Library', coach: 'AI Coach', content: 'Content Engine',
+    repurpose: 'Repurposing Studio', newsletter: 'Newsletter Studio', batch: 'Batch Workflow',
+    conversations: 'Conversations', outbound: 'Outbound', funnels: 'Funnels',
+    conversion: 'Conversion Lab', revenue: 'Revenue Planner', calendar: 'Calendar',
+    analytics: 'Analytics', aio: 'AI Search', public: 'Public Profile', swipe: 'Swipe File',
+    proof: 'Proof Vault'
+  };
+  useDocTitle(viewTitles[activeView] || null);
 
   // Load all data
   useEffect(() => {
@@ -135,6 +276,7 @@ export default function PersonalBrandPlatform() {
   return (
     <div className="min-h-screen bg-stone-50" style={{ fontFamily: "'Fraunces', Georgia, serif" }}>
       <GlobalStyles />
+      <CommandPalette setActiveView={setActiveView} viewTitles={viewTitles} />
 
       {/* Mobile top bar — only visible on small screens */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-stone-50/95 backdrop-blur-sm border-b border-stone-200 px-4 py-3 flex items-center justify-between">
@@ -305,30 +447,59 @@ function GlobalStyles() {
 }
 
 // ============= ONBOARDING =============
+const ONBOARDING_STORAGE_KEY = 'brand:onboarding:draft';
+
+const ONBOARDING_BLANK = {
+  name: '',
+  title: '',
+  location: '',
+  industries: [],
+  audiences: [],
+  expertise: [],
+  transformation: '',
+  pains: [],
+  prizes: [],
+  voice: '',
+  tone: [],
+  voiceTaboos: [],
+  primaryGoal: '',
+  secondaryGoals: [],
+  platforms: [],
+  primaryPlatform: '',
+  postingCadence: 'three_per_week',
+  timeAvailable: '',
+  competitorVoices: [],
+  differentiators: ''
+};
+
 function Onboarding({ onComplete }) {
   const [step, setStep] = useState(0);
-  const [data, setData] = useState({
-    name: 'Umair Mustafa',
-    title: '',
-    location: '',
-    industries: [],
-    audiences: [],
-    expertise: [],
-    transformation: '',
-    pains: [],
-    prizes: [],
-    voice: '',
-    tone: [],
-    voiceTaboos: [],
-    primaryGoal: '',
-    secondaryGoals: [],
-    platforms: [],
-    primaryPlatform: '',
-    postingCadence: 'three_per_week',
-    timeAvailable: '',
-    competitorVoices: [],
-    differentiators: ''
-  });
+  const [data, setData] = useState(ONBOARDING_BLANK);
+  const [restored, setRestored] = useState(false);
+
+  // Restore in-progress draft from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved?.data) {
+          setData({ ...ONBOARDING_BLANK, ...saved.data });
+          setStep(typeof saved.step === 'number' ? saved.step : 0);
+          setRestored(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Persist draft on every change so a browser crash doesn't lose progress
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify({ data, step, savedAt: Date.now() }));
+    } catch {}
+  }, [data, step]);
 
   const update = (k, v) => setData({ ...data, [k]: v });
 
@@ -356,6 +527,56 @@ function Onboarding({ onComplete }) {
     if (step === 8) return data.platforms.length > 0 && data.primaryPlatform.length > 0;
     if (step === 9) return data.primaryGoal.length > 0;
     return true;
+  };
+
+  // What's missing on this step? Used to render a friendly hint under the form
+  // when "Continue" is disabled, so the user understands WHY.
+  const validationHint = () => {
+    if (step === 1) {
+      if (!data.title) return 'Add your professional title to continue.';
+      if (data.industries.length === 0) return 'Add at least one industry tag.';
+    }
+    if (step === 2 && data.audiences.length === 0) return 'Add at least one audience to continue.';
+    if (step === 3 && data.expertise.length < 3) return `Add ${3 - data.expertise.length} more area${data.expertise.length === 2 ? '' : 's'} of expertise (need 3 minimum).`;
+    if (step === 4) {
+      if (data.transformation.length === 0) return 'Write your transformation statement to continue.';
+      if (data.transformation.length <= 20) return `${21 - data.transformation.length} more character${21 - data.transformation.length === 1 ? '' : 's'} needed — be a little more specific.`;
+    }
+    if (step === 5) {
+      if (data.pains.length < 2) return `Add ${2 - data.pains.length} more pain${data.pains.length === 1 ? '' : 's'} (need 2 minimum).`;
+      if (data.prizes.length < 2) return `Add ${2 - data.prizes.length} more prize${data.prizes.length === 1 ? '' : 's'} (need 2 minimum).`;
+    }
+    if (step === 6) {
+      if (!data.voice) return 'Pick a voice archetype to continue.';
+      if (data.tone.length === 0) return 'Add at least one tone descriptor.';
+    }
+    if (step === 7 && data.differentiators.length <= 10) return 'Write a bit more on what makes you different (longer than 10 characters).';
+    if (step === 8) {
+      if (data.platforms.length === 0) return 'Pick at least one platform.';
+      if (!data.primaryPlatform) return 'Select your primary platform.';
+    }
+    if (step === 9 && !data.primaryGoal) return 'Add your primary goal to finish.';
+    return null;
+  };
+
+  const clearDraft = () => {
+    try { localStorage.removeItem(ONBOARDING_STORAGE_KEY); } catch {}
+  };
+
+  const saveAndExit = () => {
+    // The draft is already auto-saved on every change — this just gives the user
+    // a deliberate exit point. They can come back later by re-loading the platform.
+    if (typeof window !== 'undefined') {
+      alert("Your progress is saved. Close this tab — when you return, you'll pick up where you left off.");
+    }
+  };
+
+  const startOver = () => {
+    if (typeof window === 'undefined' || !window.confirm('Start onboarding over? Your in-progress draft will be cleared.')) return;
+    clearDraft();
+    setData(ONBOARDING_BLANK);
+    setStep(0);
+    setRestored(false);
   };
 
   return (
@@ -397,21 +618,56 @@ function Onboarding({ onComplete }) {
           {step === 9 && <OnboardGoals data={data} update={update} />}
         </div>
 
-        <div className="flex justify-between items-center mt-8">
-          <button
-            onClick={() => step > 0 && setStep(step - 1)}
-            disabled={step === 0}
-            className="font-sans text-sm text-stone-600 hover:text-stone-900 disabled:opacity-30 flex items-center gap-1.5"
-          >
-            <ChevronLeft className="w-4 h-4" /> Back
-          </button>
+        {/* Restored-from-draft banner */}
+        {restored && step > 0 && (
+          <div className="mt-4 bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between gap-3 animate-fadeIn">
+            <div className="font-sans text-xs text-stone-700">
+              <span className="font-mono uppercase tracking-wider text-amber-800 text-[10px]">Picking up where you left off</span>
+              <span className="mx-2 text-stone-400">·</span>
+              You can edit any answer or start fresh.
+            </div>
+            <button onClick={startOver} className="font-sans text-xs text-stone-600 hover:text-stone-900 underline">Start over</button>
+          </div>
+        )}
+
+        {/* Validation hint when "Continue" is disabled */}
+        {validationHint() && (
+          <div className="mt-3 font-sans text-xs text-stone-500 italic">{validationHint()}</div>
+        )}
+
+        <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center mt-6 gap-3">
+          <div className="flex gap-3 items-center">
+            <button
+              onClick={() => step > 0 && setStep(step - 1)}
+              disabled={step === 0}
+              className="font-sans text-sm text-stone-600 hover:text-stone-900 disabled:opacity-30 flex items-center gap-1.5"
+            >
+              <ChevronLeft className="w-4 h-4" /> Back
+            </button>
+            {step > 0 && (
+              <>
+                <span className="text-stone-300">·</span>
+                <button
+                  onClick={saveAndExit}
+                  className="font-sans text-xs text-stone-500 hover:text-stone-900"
+                  title="Your progress is auto-saved. Close the tab and come back anytime."
+                >
+                  Save & exit
+                </button>
+              </>
+            )}
+          </div>
           <button
             onClick={() => {
-              if (step === steps.length - 1) onComplete({ ...data, createdAt: new Date().toISOString() });
-              else setStep(step + 1);
+              if (step === steps.length - 1) {
+                onComplete({ ...data, createdAt: new Date().toISOString() });
+                clearDraft();
+              } else {
+                setStep(step + 1);
+              }
             }}
             disabled={!canProceed()}
-            className="px-8 py-3 bg-stone-900 text-stone-50 font-sans text-sm tracking-wide hover:bg-stone-800 disabled:opacity-30 flex items-center gap-2 group"
+            className="px-6 sm:px-8 py-3 bg-stone-900 text-stone-50 font-sans text-sm tracking-wide hover:bg-stone-800 disabled:opacity-30 flex items-center justify-center gap-2 group"
           >
             {step === steps.length - 1 ? 'Build my platform' : 'Continue'}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -1055,7 +1311,7 @@ function Sidebar({ activeView, setActiveView, profile, collapsed, setCollapsed, 
         {!collapsed && (
           <>
             <div className="font-display text-2xl font-light leading-tight">
-              {profile.name?.split(' ')[0] || 'You'}<span className="text-stone-500">.</span>
+              {firstNameOf(profile) || 'You'}<span className="text-stone-500">.</span>
             </div>
             <div className="font-sans text-[11px] text-stone-400 mt-1.5 leading-relaxed">{profile.title}</div>
           </>
@@ -1097,18 +1353,53 @@ function Sidebar({ activeView, setActiveView, profile, collapsed, setCollapsed, 
       </nav>
 
       {!collapsed && (
-        <div className="p-6 border-t border-stone-800">
-          <div className="font-mono text-[9px] tracking-[0.25em] uppercase text-stone-500 mb-2">Today</div>
-          <div className="text-sm leading-relaxed">
-            {day === 1 && <><span className="text-red-400">●</span> Pain post day</>}
-            {day === 3 && <><span className="text-amber-400">●</span> News post day</>}
-            {day === 5 && <><span className="text-emerald-400">●</span> Prize post day</>}
-            {(day === 2 || day === 4) && <><span className="text-stone-500">●</span> Reflection / batch</>}
-            {(day === 0 || day === 6) && <><span className="text-stone-500">●</span> Story-mining day</>}
+        <div className="p-6 border-t border-stone-800 space-y-4">
+          <div>
+            <div className="font-mono text-[9px] tracking-[0.25em] uppercase text-stone-500 mb-2">Today</div>
+            <div className="text-sm leading-relaxed">
+              {day === 1 && <><span className="text-red-400">●</span> Pain post day</>}
+              {day === 3 && <><span className="text-amber-400">●</span> News post day</>}
+              {day === 5 && <><span className="text-emerald-400">●</span> Prize post day</>}
+              {(day === 2 || day === 4) && <><span className="text-stone-500">●</span> Reflection / batch</>}
+              {(day === 0 || day === 6) && <><span className="text-stone-500">●</span> Story-mining day</>}
+            </div>
+          </div>
+          <SidebarAiMeter />
+          <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-stone-600 flex items-center gap-2">
+            <kbd className="bg-stone-800 border border-stone-700 px-1.5 py-0.5 text-stone-300">⌘K</kbd>
+            <span>Quick switcher</span>
           </div>
         </div>
       )}
     </aside>
+  );
+}
+
+// Dark-themed AI usage meter for inside the sidebar.
+function SidebarAiMeter() {
+  const { hourCount, dayCount, loaded } = useAiUsage();
+  if (!loaded) return null;
+  const hourPct = Math.min(100, (hourCount / AI_HOUR_LIMIT) * 100);
+  const dayPct = Math.min(100, (dayCount / AI_DAY_LIMIT) * 100);
+  const tone = hourPct >= 90 || dayPct >= 90 ? 'bg-red-500' : hourPct >= 70 || dayPct >= 70 ? 'bg-amber-400' : 'bg-emerald-500';
+  return (
+    <div>
+      <div className="font-mono text-[9px] tracking-[0.25em] uppercase text-stone-500 mb-2">AI usage</div>
+      <div className="space-y-1.5">
+        <div>
+          <div className="flex justify-between font-mono text-[10px] text-stone-400 mb-0.5">
+            <span>Hour</span><span>{hourCount}/{AI_HOUR_LIMIT}</span>
+          </div>
+          <div className="h-1 bg-stone-800"><div className={`h-full transition-all ${tone}`} style={{ width: `${hourPct}%` }} /></div>
+        </div>
+        <div>
+          <div className="flex justify-between font-mono text-[10px] text-stone-400 mb-0.5">
+            <span>Day</span><span>{dayCount}/{AI_DAY_LIMIT}</span>
+          </div>
+          <div className="h-1 bg-stone-800"><div className={`h-full transition-all ${tone}`} style={{ width: `${dayPct}%` }} /></div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1176,21 +1467,71 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
           {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · {profile.location || 'Studio'}
         </div>
         <h1 className="font-display text-7xl font-light text-stone-900 leading-[1.02] tracking-tight">
-          Hello, {profile.name?.split(' ')[0]}<span className="text-stone-400">.</span>
+          Hello, {firstNameOf(profile)}<span className="text-stone-400">.</span>
         </h1>
         <p className="text-xl text-stone-600 mt-4 max-w-3xl leading-relaxed font-sans">
           {stageMessages[stage].sub}
         </p>
       </div>
 
-      {/* Top stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
-        <StatCard label="Brand Build" value={`${overall}%`} hint={stageMessages[stage].title} icon={Activity} />
-        <StatCard label="Stories" value={stories.length} hint={`Goal: 10+`} icon={BookOpen} />
-        <StatCard label="Posts Created" value={contentPieces.length} hint={`${postedCount} published`} icon={Sparkles} />
-        <StatCard label="Total Reach" value={totalImpressions > 1000 ? `${Math.round(totalImpressions/1000)}k` : totalImpressions} hint={`${totalEngagements} engagements`} icon={Eye} />
-        <StatCard label="DMs Received" value={totalDMs} hint="Inbound conversations" icon={MessageSquare} />
-      </div>
+      {/* First-time user welcome state — shows when there's nothing to display.
+          Replaces a graveyard of zeros with a single, clear next action. */}
+      {stories.length === 0 && contentPieces.length === 0 ? (
+        <div className="bg-white border border-stone-200 p-6 md:p-10 mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-center">
+            <div className="lg:col-span-3">
+              <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-amber-700 mb-2">Welcome</div>
+              <h2 className="font-display text-3xl md:text-4xl font-light text-stone-900 leading-tight mb-3">
+                Capture your first story.<br /><span className="text-stone-500">Everything else flows from this.</span>
+              </h2>
+              <p className="font-sans text-base text-stone-600 leading-relaxed mb-5">
+                Tap the mic, talk for 30 seconds about something that happened this week — in any language. AI translates, structures it, and turns it into ready-to-publish posts.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setActiveView('stories')}
+                  className="px-6 py-3 bg-stone-900 text-stone-50 font-sans text-sm hover:bg-stone-800 inline-flex items-center gap-2"
+                >
+                  <Mic className="w-4 h-4" /> Speak my first story
+                </button>
+                <button
+                  onClick={() => setActiveView('coach')}
+                  className="px-6 py-3 border border-stone-300 hover:border-stone-900 font-sans text-sm text-stone-800 inline-flex items-center gap-2"
+                >
+                  <Brain className="w-4 h-4" /> Or chat with the AI Coach
+                </button>
+              </div>
+            </div>
+            <div className="lg:col-span-2 bg-stone-50 border border-stone-200 p-5">
+              <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-stone-500 mb-3">Suggested order</div>
+              <ol className="space-y-2">
+                {[
+                  { n: 1, t: 'Capture 3 stories', v: 'stories' },
+                  { n: 2, t: 'Generate your first post', v: 'content' },
+                  { n: 3, t: 'Set up your public profile', v: 'public' },
+                  { n: 4, t: 'Log your first inbound DM', v: 'conversations' }
+                ].map((s) => (
+                  <li key={s.n} className="flex items-start gap-3">
+                    <span className="font-mono text-xs text-stone-400 mt-0.5">{String(s.n).padStart(2, '0')}</span>
+                    <button onClick={() => setActiveView(s.v)} className="text-left font-sans text-sm text-stone-700 hover:text-stone-900 hover:underline">
+                      {s.t}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Returning-user stats row */
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
+          <StatCard label="Brand Build" value={`${overall}%`} hint={stageMessages[stage].title} icon={Activity} />
+          <StatCard label="Stories" value={stories.length} hint={`Goal: 10+`} icon={BookOpen} />
+          <StatCard label="Posts Created" value={contentPieces.length} hint={`${postedCount} published`} icon={Sparkles} />
+          <StatCard label="Total Reach" value={totalImpressions > 1000 ? `${Math.round(totalImpressions/1000)}k` : totalImpressions} hint={`${totalEngagements} engagements`} icon={Eye} />
+          <StatCard label="DMs Received" value={totalDMs} hint="Inbound conversations" icon={MessageSquare} />
+        </div>
+      )}
 
       {/* Hero card + identity */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
@@ -1478,6 +1819,12 @@ function StoryVault({ stories, saveStories, profile }) {
   const [sortBy, setSortBy] = useState('recent');
   const [viewMode, setViewMode] = useState('grid');
 
+  // Detect Web Speech API support upfront so we can show users the right message
+  // BEFORE they click and hit a dead button.
+  const voiceSupported = typeof window !== 'undefined' && (
+    'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
+  );
+
   const months = useMemo(() => {
     const m = [];
     const now = new Date();
@@ -1523,9 +1870,11 @@ function StoryVault({ stories, saveStories, profile }) {
           <div className="flex gap-2">
             <button
               onClick={() => setShowVoice(true)}
-              className="px-5 py-2.5 bg-amber-500 text-stone-950 font-sans text-sm hover:bg-amber-400 inline-flex items-center gap-2"
+              disabled={!voiceSupported}
+              title={voiceSupported ? 'Speak a story in any language' : 'Voice capture requires Chrome, Edge, or Safari — switch browser or use New Story instead'}
+              className="px-5 py-2.5 bg-amber-500 text-stone-950 font-sans text-sm hover:bg-amber-400 inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Mic className="w-4 h-4" /> Speak a story
+              <Mic className="w-4 h-4" /> Speak a story{!voiceSupported ? ' (Chrome/Safari)' : ''}
             </button>
             <button
               onClick={() => { setEditing(null); setShowForm(true); }}
@@ -1664,7 +2013,7 @@ function StoryVault({ stories, saveStories, profile }) {
               key={story.id}
               story={story}
               onEdit={() => { setEditing(story); setShowForm(true); }}
-              onDelete={() => { if (window.confirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
+              onDelete={async () => { if (await window.brandConfirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
               onUpdate={(updated) => saveStories(stories.map(s => s.id === updated.id ? updated : s))}
             />
           ))}
@@ -1676,7 +2025,7 @@ function StoryVault({ stories, saveStories, profile }) {
               key={story.id}
               story={story}
               onEdit={() => { setEditing(story); setShowForm(true); }}
-              onDelete={() => { if (window.confirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
+              onDelete={async () => { if (await window.brandConfirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
             />
           ))}
         </div>
@@ -1766,6 +2115,8 @@ function StoryRow({ story, onEdit, onDelete }) {
 }
 
 function StoryForm({ story, months, profile, onSave, onCancel }) {
+  useEscape(onCancel);
+  useBodyScrollLock(true);
   const [s, setS] = useState(story || { 
     title: '', lesson: '', emotion: '', month: months[0], category: 'pain',
     context: '', conflict: '', resolution: '', tags: [], framework: 'general',
@@ -2071,7 +2422,7 @@ Build a deep, specific ICP. Return ONLY valid JSON:
             key={icp.id} 
             icp={icp} 
             onEdit={() => { setEditing(icp); setShowForm(true); }}
-            onDelete={() => { if (window.confirm('Delete this ICP? This cannot be undone.')) saveIcps(icps.filter(i => i.id !== icp.id)); }}
+            onDelete={async () => { if (await window.brandConfirm('Delete this ICP? This cannot be undone.')) saveIcps(icps.filter(i => i.id !== icp.id)); }}
           />
         ))}
       </div>
@@ -2246,6 +2597,8 @@ function ICPCard({ icp, onEdit, onDelete }) {
 }
 
 function ICPForm({ icp, onSave, onCancel }) {
+  useEscape(onCancel);
+  useBodyScrollLock(true);
   const [s, setS] = useState(icp || { 
     name: '', title: '', demographics: '', psychographics: '', dailyReality: '',
     topPains: [], topGoals: [], objections: [], wateringHoles: [],
@@ -2501,7 +2854,7 @@ Return ONLY valid JSON:
                   {copiedId === hook.id ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
                 </button>
                 {hook.custom && (
-                  <button onClick={() => { if (window.confirm('Delete this hook?')) saveHooks(hooks.filter(h => h.id !== hook.id)); }} className="px-3 py-1.5 hover:bg-red-50 font-sans text-xs text-red-700">
+                  <button onClick={async () => { if (await window.brandConfirm('Delete this hook?')) saveHooks(hooks.filter(h => h.id !== hook.id)); }} className="px-3 py-1.5 hover:bg-red-50 font-sans text-xs text-red-700">
                     Delete
                   </button>
                 )}
@@ -2880,7 +3233,7 @@ Return ONLY valid JSON:
                   piece={p} 
                   onCopy={(text) => copyContent(text, p.id)}
                   copied={copied === p.id}
-                  onDelete={() => { if (window.confirm('Delete this content piece? This cannot be undone.')) saveContent(contentPieces.filter(c => c.id !== p.id)); }}
+                  onDelete={async () => { if (await window.brandConfirm('Delete this content piece? This cannot be undone.')) saveContent(contentPieces.filter(c => c.id !== p.id)); }}
                   onUpdate={(updated) => saveContent(contentPieces.map(c => c.id === updated.id ? updated : c))}
                 />
               ))}
@@ -2893,6 +3246,8 @@ Return ONLY valid JSON:
 }
 
 function GeneratedContentPreview({ content, story, onSave, onDiscard, onCopy, copiedId }) {
+  useEscape(onDiscard);
+  useBodyScrollLock(true);
   return (
     <div className="bg-stone-50 border-2 border-stone-900 p-8 space-y-6 animate-slideIn">
       <div className="flex justify-between items-center">
@@ -3389,7 +3744,7 @@ Return ONLY valid JSON:
                     <div className="flex items-center gap-2">
                       <Pill color="blue">{b.platform}</Pill>
                       <Pill>{b.format}</Pill>
-                      <button onClick={() => { if (window.confirm('Delete this batch? Scheduled posts stay; only the batch record is removed.')) saveBatches(batches.filter(x => x.id !== b.id)); }} className="p-1.5 hover:bg-red-50">
+                      <button onClick={async () => { if (await window.brandConfirm('Delete this batch? Scheduled posts stay; only the batch record is removed.')) saveBatches(batches.filter(x => x.id !== b.id)); }} className="p-1.5 hover:bg-red-50">
                         <Trash2 className="w-3.5 h-3.5 text-red-600" />
                       </button>
                     </div>
@@ -3519,7 +3874,7 @@ function FunnelBuilder({ funnels, saveFunnels, profile }) {
             key={funnel.id}
             funnel={funnel}
             onEdit={() => { setEditing(funnel); setShowForm(true); }}
-            onDelete={() => { if (window.confirm('Delete this funnel? This cannot be undone.')) saveFunnels(funnels.filter(f => f.id !== funnel.id)); }}
+            onDelete={async () => { if (await window.brandConfirm('Delete this funnel? This cannot be undone.')) saveFunnels(funnels.filter(f => f.id !== funnel.id)); }}
           />
         ))}
       </div>
@@ -3560,6 +3915,8 @@ function FunnelCard({ funnel, onEdit, onDelete }) {
 }
 
 function FunnelForm({ funnel, onSave, onCancel }) {
+  useEscape(onCancel);
+  useBodyScrollLock(true);
   const [f, setF] = useState(funnel || { name: '', description: '', stages: [{ name: '', desc: '' }] });
   return (
     <div className="bg-stone-950 text-stone-50 p-8 mb-6 animate-slideIn">
@@ -4196,13 +4553,13 @@ function AICoach({ profile, stories, saveStories }) {
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const [extractedStory, setExtractedStory] = useState(null);
+  const [loaded, setLoaded] = useState(false);
   const messagesEndRef = useRef(null);
+  const hasLoadedRef = useRef(false);
 
-  useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([{
-        role: 'assistant',
-        content: `Hey ${profile.name?.split(' ')[0]}. I'm your story coach — trained on the framework.
+  const welcomeMessage = {
+    role: 'assistant',
+    content: `Hey ${firstNameOf(profile)}. I'm your story coach.
 
 We're going to mine one story from your last 60 days. Here's how this works:
 
@@ -4211,9 +4568,46 @@ We're going to mine one story from your last 60 days. Here's how this works:
 3. I write it up as a clean story for your vault
 
 Let's start: Open your phone, go to Photos, scroll back to the last 30 days. **What's one moment that stands out — good, bad, weird, anything?** Don't overthink. Just tell me what happened.`
-      }]);
-    }
+  };
+
+  // Restore the in-progress session from storage so navigating away doesn't lose work.
+  useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+    (async () => {
+      try {
+        if (typeof window !== 'undefined' && window.storage) {
+          const r = await window.storage.get('coachSession');
+          if (r?.value) {
+            const saved = JSON.parse(r.value);
+            if (Array.isArray(saved?.messages) && saved.messages.length > 0) {
+              setMessages(saved.messages);
+              setLoaded(true);
+              return;
+            }
+          }
+        }
+      } catch {}
+      setMessages([welcomeMessage]);
+      setLoaded(true);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Persist messages whenever they change (debounced via React batching).
+  useEffect(() => {
+    if (!loaded || messages.length === 0) return;
+    if (typeof window === 'undefined' || !window.storage) return;
+    window.storage.set('coachSession', JSON.stringify({ messages, updatedAt: Date.now() }));
+  }, [messages, loaded]);
+
+  const resetSession = async () => {
+    if (typeof window === 'undefined') return;
+    if (!(await window.brandConfirm('Start a new coaching session? The current conversation will be cleared.'))) return;
+    setMessages([welcomeMessage]);
+    setExtractedStory(null);
+    if (window.storage) window.storage.set('coachSession', JSON.stringify({ messages: [welcomeMessage], updatedAt: Date.now() }));
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -4286,7 +4680,25 @@ Otherwise just keep asking great questions. Be human, warm, but sharp. Push them
         kicker="Source Material · AI Coach"
         title="Story Coach"
         description="Conversational story extraction. Like sitting across from a host who keeps asking 'and then what?'"
+        action={
+          messages.length > 1 ? (
+            <button
+              onClick={resetSession}
+              className="px-4 py-2 border border-stone-300 hover:border-stone-500 font-sans text-sm inline-flex items-center gap-2 text-stone-700"
+            >
+              <Repeat className="w-4 h-4" /> New session
+            </button>
+          ) : null
+        }
       />
+
+      {messages.length > 1 && (
+        <div className="bg-emerald-50 border border-emerald-200 px-4 py-2 font-sans text-xs text-stone-700 mb-3">
+          <span className="font-mono uppercase tracking-wider text-emerald-800 text-[10px]">Auto-saved</span>
+          <span className="mx-2 text-stone-400">·</span>
+          Pick up where you left off any time — your conversation is preserved across page reloads.
+        </div>
+      )}
 
       <div className="bg-white border border-stone-200 h-[70vh] flex flex-col">
         <div className="flex-1 overflow-y-auto p-7 space-y-5">
@@ -4297,7 +4709,7 @@ Otherwise just keep asking great questions. Be human, warm, but sharp. Push them
               </div>
               <div className={`flex-1 max-w-2xl ${m.role === 'user' ? 'text-right' : ''}`}>
                 <div className={`font-mono text-[10px] uppercase tracking-wider mb-1.5 ${m.role === 'user' ? 'text-stone-500' : 'text-stone-500'}`}>
-                  {m.role === 'user' ? profile.name?.split(' ')[0] : 'Coach'}
+                  {m.role === 'user' ? firstNameOf(profile) : 'Coach'}
                 </div>
                 <div className={`whitespace-pre-wrap leading-relaxed font-sans text-sm ${m.role === 'user' ? 'bg-stone-100 text-stone-900 p-4 inline-block text-left' : 'text-stone-800'}`}>
                   {m.content}
@@ -4471,15 +4883,18 @@ function ProfileSettings({ profile, saveProfile, setShowOnboarding }) {
         )}
 
         {activeTab === 'danger' && (
-          <div className="bg-red-50 border border-red-200 p-6">
-            <div className="font-display text-xl text-red-900 mb-2">Reset Onboarding</div>
-            <div className="font-sans text-sm text-red-800 mb-4">This will walk you through the 10-step setup again. Your stories, content, and analytics will not be deleted.</div>
-            <button 
-              onClick={() => { if (confirm('Restart onboarding?')) setShowOnboarding(true); }} 
-              className="px-5 py-2.5 bg-red-900 text-red-50 font-sans text-sm"
-            >
-              Restart onboarding
-            </button>
+          <div className="space-y-6">
+            <RestoreProfileSnapshot saveProfile={saveProfile} />
+            <div className="bg-red-50 border border-red-200 p-6">
+              <div className="font-display text-xl text-red-900 mb-2">Reset Onboarding</div>
+              <div className="font-sans text-sm text-red-800 mb-4">This will walk you through the 10-step setup again. Your stories, content, and analytics will not be deleted.</div>
+              <button
+                onClick={async () => { if (await window.brandConfirm('Restart onboarding? Your stories and content will be kept.')) setShowOnboarding(true); }}
+                className="px-5 py-2.5 bg-red-900 text-red-50 font-sans text-sm"
+              >
+                Restart onboarding
+              </button>
+            </div>
           </div>
         )}
 
@@ -6125,7 +6540,7 @@ function AllOptins({ optins, saveOptins }) {
               <Pill color={o.type === 'waitlist' ? 'amber' : o.type === 'assessment' ? 'violet' : o.type === 'webinar' ? 'blue' : 'green'}>{o.type}</Pill>
               <span className="font-mono text-[10px] uppercase tracking-wider text-stone-500">{new Date(o.createdAt).toLocaleDateString()}</span>
             </div>
-            <button onClick={() => { if (window.confirm('Delete this opt-in?')) saveOptins(optins.filter(x => x.id !== o.id)); }} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
+            <button onClick={async () => { if (await window.brandConfirm('Delete this opt-in?')) saveOptins(optins.filter(x => x.id !== o.id)); }} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-600" /></button>
           </div>
           <div className="font-display text-2xl font-light text-stone-900">{o.name || o.finalTitle || o.finalName || 'Untitled'}</div>
           {(o.subtitle || o.promise) && <div className="font-sans text-sm text-stone-600 mt-1">{o.subtitle || o.promise}</div>}
@@ -6318,8 +6733,8 @@ function AIOTracker({ aio, saveAio, profile, contentPieces }) {
     setQueryDraft({ engine: 'ChatGPT', query: '', appeared: false, position: '', notes: '' });
   };
 
-  const removeTopic = (id) => { if (window.confirm('Delete this topic cluster?')) saveAio({ ...aio, topics: topics.filter(t => t.id !== id) }); };
-  const removeQuery = (id) => { if (window.confirm('Delete this query test?')) saveAio({ ...aio, queries: queries.filter(q => q.id !== id) }); };
+  const removeTopic = async (id) => { if (await window.brandConfirm('Delete this topic cluster?')) saveAio({ ...aio, topics: topics.filter(t => t.id !== id) }); };
+  const removeQuery = async (id) => { if (await window.brandConfirm('Delete this query test?')) saveAio({ ...aio, queries: queries.filter(q => q.id !== id) }); };
 
   const aioScore = useMemo(() => {
     let score = 0;
@@ -6673,7 +7088,7 @@ Return ONLY valid JSON:
   };
 
   const togglePin = (id) => saveIdeas(ideas.map(i => i.id === id ? { ...i, pinned: !i.pinned } : i));
-  const remove = (id) => { if (window.confirm('Delete this idea? This cannot be undone.')) saveIdeas(ideas.filter(i => i.id !== id)); };
+  const remove = async (id) => { if (await window.brandConfirm('Delete this idea? This cannot be undone.')) saveIdeas(ideas.filter(i => i.id !== id)); };
 
   const filtered = useMemo(() => {
     let list = ideas;
@@ -6809,8 +7224,29 @@ const CONVO_STAGES = [
 
 function ConversationsHub({ conversations, saveConversations, profile, contentPieces }) {
   const [showNew, setShowNew] = useState(false);
+  const [prefill, setPrefill] = useState(null);
   const [active, setActive] = useState(null);
   const [view, setView] = useState('pipeline'); // pipeline | list
+  const [showBookmarklet, setShowBookmarklet] = useState(false);
+
+  // Auto-open the "New conversation" form when the user arrives via the bookmarklet.
+  // The bookmarklet URL: /platform?capture=conversation&text=...&name=...&source=...
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('capture') === 'conversation') {
+      setPrefill({
+        firstMessage: params.get('text') || '',
+        name: params.get('name') || '',
+        source: params.get('source') || 'LinkedIn'
+      });
+      setShowNew(true);
+      // Clean up the URL so refreshes don't re-trigger
+      const url = new URL(window.location.href);
+      ['capture', 'text', 'name', 'source'].forEach((k) => url.searchParams.delete(k));
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
 
   const stats = useMemo(() => ({
     total: conversations.length,
@@ -6821,7 +7257,7 @@ function ConversationsHub({ conversations, saveConversations, profile, contentPi
   }), [conversations]);
 
   const moveStage = (id, newStage) => saveConversations(conversations.map(c => c.id === id ? { ...c, stage: newStage, updatedAt: new Date().toISOString() } : c));
-  const remove = (id) => { if (window.confirm('Delete this conversation? All message history will be lost.')) saveConversations(conversations.filter(c => c.id !== id)); };
+  const remove = async (id) => { if (await window.brandConfirm('Delete this conversation? All message history will be lost.')) saveConversations(conversations.filter(c => c.id !== id)); };
 
   return (
     <div className="p-4 md:p-8 lg:p-12 max-w-[1800px]">
@@ -6830,11 +7266,22 @@ function ConversationsHub({ conversations, saveConversations, profile, contentPi
         title="DM & Conversations"
         description="The whole strategy hinges on this: get DMs, have 30 conversations, convert. Track every inbound from first message to closed deal."
         action={
-          <button onClick={() => setShowNew(true)} className="px-5 py-2.5 bg-stone-900 text-stone-50 font-sans text-sm inline-flex items-center gap-2">
-            <Plus className="w-4 h-4" /> New conversation
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowBookmarklet(true)}
+              className="px-4 py-2.5 border border-stone-300 hover:border-stone-900 font-sans text-sm inline-flex items-center gap-2 text-stone-700"
+              title="Install a 1-click bookmark to capture DMs from LinkedIn/X/Instagram"
+            >
+              <Anchor className="w-4 h-4" /> Bookmarklet
+            </button>
+            <button onClick={() => setShowNew(true)} className="px-5 py-2.5 bg-stone-900 text-stone-50 font-sans text-sm inline-flex items-center gap-2">
+              <Plus className="w-4 h-4" /> New conversation
+            </button>
+          </div>
         }
       />
+
+      {showBookmarklet && <BookmarkletModal onClose={() => setShowBookmarklet(false)} />}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <StatCard label="Total" value={stats.total} icon={MessageCircle} />
@@ -6853,8 +7300,9 @@ function ConversationsHub({ conversations, saveConversations, profile, contentPi
 
       {showNew && (
         <NewConversationForm
-          onSave={(conv) => { saveConversations([{ ...conv, id: Date.now(), createdAt: new Date().toISOString() }, ...conversations]); setShowNew(false); }}
-          onCancel={() => setShowNew(false)}
+          prefill={prefill}
+          onSave={(conv) => { saveConversations([{ ...conv, id: Date.now(), createdAt: new Date().toISOString() }, ...conversations]); setShowNew(false); setPrefill(null); }}
+          onCancel={() => { setShowNew(false); setPrefill(null); }}
           contentPieces={contentPieces}
         />
       )}
@@ -6922,8 +7370,19 @@ function ConversationsHub({ conversations, saveConversations, profile, contentPi
   );
 }
 
-function NewConversationForm({ onSave, onCancel, contentPieces }) {
-  const [c, setC] = useState({ source: 'LinkedIn', name: '', firstMessage: '', stage: 'new', value: '', linkedToPiece: '', notes: '', history: [] });
+function NewConversationForm({ onSave, onCancel, contentPieces, prefill }) {
+  useEscape(onCancel);
+  useBodyScrollLock(true);
+  const [c, setC] = useState({
+    source: prefill?.source || 'LinkedIn',
+    name: prefill?.name || '',
+    firstMessage: prefill?.firstMessage || '',
+    stage: 'new',
+    value: '',
+    linkedToPiece: '',
+    notes: '',
+    history: []
+  });
   return (
     <div className="bg-stone-950 text-stone-50 p-7 mb-6">
       <div className="flex justify-between items-center mb-5">
@@ -6968,6 +7427,8 @@ function NewConversationForm({ onSave, onCancel, contentPieces }) {
 }
 
 function ConversationDetail({ conversation, onClose, onUpdate, onDelete, onMoveStage, profile }) {
+  useEscape(onClose);
+  useBodyScrollLock(true);
   const [draft, setDraft] = useState('');
   const [drafting, setDrafting] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState(null);
@@ -7042,7 +7503,7 @@ Return ONLY valid JSON:
                 {m.from === 'me' ? (profile.name?.slice(0, 1) || 'M') : (conversation.name?.slice(0, 1) || 'T')}
               </div>
               <div className={`max-w-[75%] ${m.from === 'me' ? 'text-right' : ''}`}>
-                <div className={`font-mono text-[10px] uppercase tracking-wider mb-1 text-stone-500`}>{m.from === 'me' ? profile.name?.split(' ')[0] : conversation.name}</div>
+                <div className={`font-mono text-[10px] uppercase tracking-wider mb-1 text-stone-500`}>{m.from === 'me' ? firstNameOf(profile) : conversation.name}</div>
                 <div className={`p-3 font-sans text-sm leading-relaxed ${m.from === 'me' ? 'bg-stone-900 text-stone-50 inline-block text-left' : 'bg-white border border-stone-200 text-stone-800'}`}>{m.text}</div>
               </div>
             </div>
@@ -7197,12 +7658,14 @@ function OutboundPipeline({ outbound, saveOutbound, profile, stories }) {
         </div>
       )}
 
-      {active && <PitchDetail pitch={active} stories={stories} onClose={() => setActive(null)} onUpdate={(u) => { saveOutbound(outbound.map(o => o.id === u.id ? u : o)); setActive(u); }} onDelete={() => { if (window.confirm('Delete this pitch? This cannot be undone.')) { saveOutbound(outbound.filter(o => o.id !== active.id)); setActive(null); } }} profile={profile} />}
+      {active && <PitchDetail pitch={active} stories={stories} onClose={() => setActive(null)} onUpdate={(u) => { saveOutbound(outbound.map(o => o.id === u.id ? u : o)); setActive(u); }} onDelete={async () => { if (await window.brandConfirm('Delete this pitch? This cannot be undone.')) { saveOutbound(outbound.filter(o => o.id !== active.id)); setActive(null); } }} profile={profile} />}
     </div>
   );
 }
 
 function NewPitchForm({ stories, onSave, onCancel }) {
+  useEscape(onCancel);
+  useBodyScrollLock(true);
   const [p, setP] = useState({ type: 'podcast', target: '', contactName: '', contactRole: '', stage: 'researching', anchorStoryId: '', pitchAngle: '', notes: '', followUpAt: '' });
   return (
     <div className="bg-stone-950 text-stone-50 p-7 mb-6">
@@ -7256,6 +7719,8 @@ function NewPitchForm({ stories, onSave, onCancel }) {
 }
 
 function PitchDetail({ pitch, stories, onClose, onUpdate, onDelete, profile }) {
+  useEscape(onClose);
+  useBodyScrollLock(true);
   const [drafting, setDrafting] = useState(false);
   const [draftedPitch, setDraftedPitch] = useState(null);
   const story = stories.find(s => s.id === parseInt(pitch.anchorStoryId));
@@ -7678,7 +8143,7 @@ Return ONLY valid JSON:
     setAnalyzing(false);
   };
 
-  const remove = (id) => { if (window.confirm('Delete this swipe?')) saveSwipeFile(swipeFile.filter(s => s.id !== id)); };
+  const remove = async (id) => { if (await window.brandConfirm('Delete this swipe?')) saveSwipeFile(swipeFile.filter(s => s.id !== id)); };
 
   const filtered = useMemo(() => {
     let list = swipeFile;
@@ -7808,7 +8273,7 @@ function NewsletterStudio({ newsletters, saveNewsletters, stories, profile, setA
     setEditing(null);
   };
 
-  const remove = (id) => { if (window.confirm('Delete this newsletter? All sections will be lost.')) saveNewsletters(newsletters.filter(n => n.id !== id)); };
+  const remove = async (id) => { if (await window.brandConfirm('Delete this newsletter? All sections will be lost.')) saveNewsletters(newsletters.filter(n => n.id !== id)); };
 
   if (view === 'edit' && editing) {
     return <NewsletterEditor newsletter={editing} stories={stories} profile={profile} onSave={save} onCancel={() => { setView('list'); setEditing(null); }} />;
@@ -7862,6 +8327,8 @@ function NewsletterStudio({ newsletters, saveNewsletters, stories, profile, setA
 }
 
 function NewsletterEditor({ newsletter, stories, profile, onSave, onCancel }) {
+  useEscape(onCancel);
+  useBodyScrollLock(true);
   const [n, setN] = useState(newsletter);
   const [generatingSection, setGeneratingSection] = useState(null);
   const [generatingFull, setGeneratingFull] = useState(false);
@@ -8065,14 +8532,120 @@ Return ONLY valid JSON:
             )}
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 p-5">
-            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-amber-800 mb-2">For sending</div>
-            <div className="font-sans text-xs text-stone-700 leading-relaxed">When ready, copy the preview and paste into your email tool of choice (ConvertKit, Beehiiv, Mailchimp, Substack). Native email send is on the roadmap.</div>
-          </div>
+          <NewsletterSendCard newsletter={n} />
         </div>
       </div>
     </div>
   );
+}
+
+// Inline Send-via-Resend card. Falls back gracefully when RESEND_API_KEY isn't
+// configured server-side (the API returns 503 with setup docs link).
+function NewsletterSendCard({ newsletter }) {
+  const [recipients, setRecipients] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sentInfo, setSentInfo] = useState(null);
+
+  const cleanRecipients = useMemo(() => {
+    return recipients
+      .split(/[,\n;]/)
+      .map(s => s.trim())
+      .filter(s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s));
+  }, [recipients]);
+
+  const buildHtml = () => {
+    const sectionsHtml = (newsletter.sections || [])
+      .map(s => `<section style="margin-bottom:32px;">${s.title ? `<h2 style="font-family:Georgia,serif;font-size:24px;font-weight:500;margin:0 0 12px;">${escapeHtml(s.title)}</h2>` : ''}<div style="font-family:Inter,system-ui,sans-serif;font-size:16px;line-height:1.6;color:#374151;white-space:pre-wrap;">${escapeHtml(s.content || '')}</div></section>`)
+      .join('');
+    return `<!doctype html><html><body style="margin:0;padding:24px;background:#fafaf9;font-family:Inter,system-ui,sans-serif;color:#1c1917;"><div style="max-width:640px;margin:0 auto;background:#fff;padding:40px 32px;">${newsletter.title ? `<h1 style="font-family:Georgia,serif;font-size:32px;font-weight:300;line-height:1.2;margin:0 0 8px;">${escapeHtml(newsletter.title)}</h1>` : ''}${newsletter.preview ? `<p style="font-family:Georgia,serif;font-size:16px;font-style:italic;color:#78716c;margin:0 0 32px;">${escapeHtml(newsletter.preview)}</p>` : ''}${sectionsHtml}</div></body></html>`;
+  };
+
+  const buildText = () => {
+    return (newsletter.sections || [])
+      .map(s => (s.title ? `\n${s.title}\n${'-'.repeat(s.title.length)}\n` : '\n') + (s.content || ''))
+      .join('\n');
+  };
+
+  const send = async () => {
+    if (cleanRecipients.length === 0) return;
+    setSending(true);
+    setSentInfo(null);
+    try {
+      const r = await fetch('/api/send-newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          to: cleanRecipients,
+          subject: newsletter.subject || newsletter.title || 'Untitled newsletter',
+          html: buildHtml(),
+          text: buildText()
+        })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: data.error || `Send failed (HTTP ${r.status})` } }));
+        }
+        setSentInfo({ ok: false, error: data.error });
+      } else {
+        setSentInfo({ ok: true, count: data.sent || cleanRecipients.length });
+        setRecipients('');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'success', message: `Newsletter sent to ${data.sent || cleanRecipients.length} recipient(s).` } }));
+        }
+      }
+    } catch (e) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: 'Send failed: ' + e.message } }));
+      }
+      setSentInfo({ ok: false, error: e.message });
+    }
+    setSending(false);
+  };
+
+  return (
+    <div className="bg-stone-950 text-stone-50 p-6">
+      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-amber-400 mb-2">Send via email</div>
+      <div className="font-display text-lg mb-3">Ship it (Resend)</div>
+      <div className="font-sans text-xs text-stone-300 mb-4 leading-relaxed">
+        Paste recipient emails (comma- or newline-separated). Max 50. Requires <span className="font-mono">RESEND_API_KEY</span> server env var.
+      </div>
+      <textarea
+        rows={3}
+        value={recipients}
+        onChange={(e) => setRecipients(e.target.value)}
+        placeholder="alice@example.com, bob@example.com"
+        className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-mono text-xs text-stone-100 placeholder:text-stone-600"
+      />
+      <div className="flex items-center justify-between mt-3 gap-2">
+        <span className="font-mono text-[10px] text-stone-500">
+          {cleanRecipients.length === 0 ? 'No valid emails yet' : `${cleanRecipients.length} valid email${cleanRecipients.length === 1 ? '' : 's'}`}
+        </span>
+        <button
+          onClick={send}
+          disabled={cleanRecipients.length === 0 || sending}
+          className="px-4 py-2 bg-stone-50 text-stone-900 font-sans text-sm hover:bg-stone-200 disabled:opacity-30 inline-flex items-center gap-2"
+        >
+          {sending ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</> : <><Send className="w-4 h-4" /> Send now</>}
+        </button>
+      </div>
+      {sentInfo?.ok && (
+        <div className="mt-3 bg-emerald-900/30 border border-emerald-800 px-3 py-2 font-sans text-xs text-emerald-200">
+          ✓ Sent to {sentInfo.count} recipient{sentInfo.count === 1 ? '' : 's'}.
+        </div>
+      )}
+      <div className="mt-3 font-mono text-[10px] text-stone-500">
+        Don't have Resend? Visit <span className="text-amber-400">resend.com</span> (free tier: 100 emails/day). For bigger lists, copy/paste into ConvertKit, Beehiiv, or Mailchimp instead.
+      </div>
+    </div>
+  );
+}
+
+// Tiny HTML-escape helper for newsletter rendering
+function escapeHtml(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 // ============= PROOF VAULT =============
@@ -8165,7 +8738,7 @@ function ProofVault({ proof, saveProof, contentPieces, profile }) {
                   <span className="font-mono text-[10px] uppercase tracking-wider text-stone-400">{p.when || new Date(p.createdAt).toLocaleDateString()}</span>
                   <div className="ml-auto opacity-0 group-hover:opacity-100 flex gap-1">
                     <button onClick={() => { setEditing(p); setShowNew(true); }} className="p-1.5 hover:bg-stone-100"><Edit3 className="w-3 h-3" /></button>
-                    <button onClick={() => { if (window.confirm('Delete this proof item?')) saveProof(proof.filter(x => x.id !== p.id)); }} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3 h-3 text-red-600" /></button>
+                    <button onClick={async () => { if (await window.brandConfirm('Delete this proof item?')) saveProof(proof.filter(x => x.id !== p.id)); }} className="p-1.5 hover:bg-red-50"><Trash2 className="w-3 h-3 text-red-600" /></button>
                   </div>
                 </div>
                 {p.type === 'testimonial' && (
@@ -8179,6 +8752,11 @@ function ProofVault({ proof, saveProof, contentPieces, profile }) {
                 )}
                 {p.source && p.type !== 'testimonial' && (
                   <div className="font-sans text-xs text-stone-500 italic mb-3">{p.source}</div>
+                )}
+                {p.imageUrl && (
+                  <a href={p.imageUrl} target="_blank" rel="noopener noreferrer" className="block mb-3">
+                    <img src={p.imageUrl} alt="Proof attachment" className="w-full max-h-64 object-cover bg-stone-100 border border-stone-200" />
+                  </a>
                 )}
                 {p.weaveContext && (
                   <div className="bg-amber-50 border border-amber-200 p-3 mb-3">
@@ -8201,7 +8779,37 @@ function ProofVault({ proof, saveProof, contentPieces, profile }) {
 }
 
 function ProofForm({ proof, onSave, onCancel }) {
-  const [p, setP] = useState(proof || { type: 'testimonial', content: '', source: '', value: '', when: '', weaveContext: '', tags: [] });
+  useEscape(onCancel);
+  useBodyScrollLock(true);
+  const [p, setP] = useState(proof || { type: 'testimonial', content: '', source: '', value: '', when: '', weaveContext: '', tags: [], imageUrl: '' });
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const r = await fetch('/api/upload', { method: 'POST', body: form, credentials: 'include' });
+      const data = await r.json();
+      if (!r.ok) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: data.error || 'Upload failed' } }));
+        }
+      } else {
+        setP({ ...p, imageUrl: data.url });
+      }
+    } catch (err) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: 'Upload failed: ' + err.message } }));
+      }
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
   return (
     <div className="bg-stone-950 text-stone-50 p-7 mb-6">
       <div className="flex justify-between items-center mb-5">
@@ -8233,6 +8841,40 @@ function ProofForm({ proof, onSave, onCancel }) {
       <Field label="Tags (comma separated)">
         <input value={(p.tags || []).join(', ')} onChange={e => setP({ ...p, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })} className="w-full bg-stone-900 border border-stone-700 px-3 py-2 font-sans text-sm" />
       </Field>
+
+      {/* File upload — useful for screenshots, certificates, photos of testimonials */}
+      <Field label="Attach an image (optional · max 5 MB · PNG/JPG/WebP/GIF/SVG)">
+        {p.imageUrl ? (
+          <div className="flex items-start gap-3 bg-stone-900 border border-stone-700 p-3">
+            <img src={p.imageUrl} alt="Proof attachment" className="w-24 h-24 object-cover bg-stone-800" />
+            <div className="flex-1 min-w-0">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-emerald-400 mb-1">Attached</div>
+              <div className="font-mono text-xs text-stone-400 break-all line-clamp-2">{p.imageUrl}</div>
+              <button onClick={() => setP({ ...p, imageUrl: '' })} className="font-sans text-xs text-stone-400 hover:text-stone-100 underline mt-2">Remove image</button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" id="proof-file-input" />
+            <label
+              htmlFor="proof-file-input"
+              className={`px-4 py-2 bg-stone-900 border border-stone-700 hover:border-stone-500 font-sans text-sm inline-flex items-center gap-2 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+            >
+              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</> : <><ImagePlus className="w-4 h-4" /> Upload image</>}
+            </label>
+            <span className="font-sans text-xs text-stone-500">Or paste a URL below.</span>
+          </div>
+        )}
+        {!p.imageUrl && (
+          <input
+            value={p.imageUrl || ''}
+            onChange={e => setP({ ...p, imageUrl: e.target.value })}
+            placeholder="https://..."
+            className="mt-2 w-full bg-stone-900 border border-stone-700 px-3 py-2 font-mono text-xs text-stone-300"
+          />
+        )}
+      </Field>
+
       <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-stone-800">
         <button onClick={onCancel} className="px-4 py-2 font-sans text-sm text-stone-400">Cancel</button>
         <button onClick={() => onSave(p)} disabled={!p.content} className="px-6 py-2 bg-stone-50 text-stone-900 font-sans text-sm disabled:opacity-30 inline-flex items-center gap-2"><Save className="w-4 h-4" /> Save proof</button>
@@ -8262,6 +8904,21 @@ function PublicProfileBuilder({ publicProfile, savePublicProfile, profile, dna, 
     return <PublicProfilePreview p={p} profile={profile} dna={dna} stories={stories.filter(s => featuredStoryIds.includes(s.id))} optin={optins.find(o => o.id === parseInt(featuredOptinId))} onClose={() => setPreviewMode(false)} />;
   }
 
+  // Compose the live URL once a username is set. We pull the site URL from the
+  // browser, so this works both on localhost and in production.
+  const liveUrl = (typeof window !== 'undefined' && p.username)
+    ? `${window.location.origin}/u/${encodeURIComponent(p.username)}`
+    : null;
+  const [copied, setCopied] = useState(false);
+  const copyLiveUrl = () => {
+    if (!liveUrl) return;
+    try {
+      navigator.clipboard?.writeText(liveUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {}
+  };
+
   return (
     <div className="p-4 md:p-8 lg:p-12 max-w-[1600px]">
       <SectionHeader
@@ -8274,6 +8931,39 @@ function PublicProfileBuilder({ publicProfile, savePublicProfile, profile, dna, 
           </button>
         }
       />
+
+      {/* Live URL banner — visible once a username is set */}
+      {liveUrl ? (
+        <div className="bg-emerald-50 border border-emerald-200 p-5 mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex-1">
+            <div className="font-mono text-[10px] tracking-[0.2em] uppercase text-emerald-800 mb-1">Your page is live</div>
+            <div className="font-mono text-sm md:text-base text-stone-900 break-all">{liveUrl}</div>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={copyLiveUrl}
+              className="px-4 py-2 bg-stone-900 text-stone-50 font-sans text-xs inline-flex items-center gap-1.5"
+            >
+              {copied ? <><Check className="w-3.5 h-3.5" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy link</>}
+            </button>
+            <a
+              href={liveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 border border-stone-300 hover:border-stone-900 font-sans text-xs inline-flex items-center gap-1.5 text-stone-800"
+            >
+              <ExternalLink className="w-3.5 h-3.5" /> Open
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 p-4 mb-6 font-sans text-sm text-stone-800 flex items-start gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+          <div>
+            Pick a handle below to make your page live at <span className="font-mono">/u/&lt;your-handle&gt;</span>. Once set, share that URL anywhere — LinkedIn bio, email signature, business card.
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
@@ -8381,6 +9071,8 @@ function PublicProfileBuilder({ publicProfile, savePublicProfile, profile, dna, 
 }
 
 function PublicProfilePreview({ p, profile, dna, stories, optin, onClose }) {
+  useEscape(onClose);
+  useBodyScrollLock(true);
   return (
     <div className="fixed inset-0 bg-stone-950/80 backdrop-blur-sm z-50 overflow-y-auto" onClick={onClose}>
       <div className="max-w-4xl mx-auto my-8 bg-stone-50 min-h-[calc(100vh-4rem)]" onClick={e => e.stopPropagation()}>
@@ -8394,7 +9086,7 @@ function PublicProfilePreview({ p, profile, dna, stories, optin, onClose }) {
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-amber-100 rounded-full blur-3xl opacity-40" />
           <div className="relative">
             <div className="font-mono text-[10px] tracking-[0.3em] text-stone-500 uppercase mb-4">{profile.location || 'Studio'}</div>
-            <h1 className="font-display text-7xl font-light text-stone-900 leading-[1.05] tracking-tight mb-4">{profile.name?.split(' ')[0]}<span className="text-stone-400">.</span></h1>
+            <h1 className="font-display text-7xl font-light text-stone-900 leading-[1.05] tracking-tight mb-4">{firstNameOf(profile)}<span className="text-stone-400">.</span></h1>
             <div className="font-display text-3xl font-light text-stone-700 italic max-w-2xl mx-auto leading-snug mb-6">{p.headline || dna.manifesto?.tagline || profile.title}</div>
             <div className="font-sans text-base text-stone-600 max-w-xl mx-auto leading-relaxed">{p.subhead || dna.manifesto?.elevatorPitch}</div>
           </div>
@@ -8568,6 +9260,12 @@ Return ONLY valid JSON:
                 <div className="font-sans text-xs text-stone-400 mt-1">{weakest?.score}% · {weakest?.desc}</div>
               </div>
             </div>
+            {stories.length < 10 && (
+              <div className="bg-stone-900/60 border border-stone-800 p-4 mb-4 font-sans text-xs text-stone-300 leading-relaxed">
+                <span className="font-mono uppercase tracking-wider text-amber-400 text-[10px]">Heads up</span>
+                <div className="mt-1.5">The full quarterly audit gets brutal — meant for someone with at least 10 stories captured. You're at {stories.length}. You can run it anyway, but the feedback will read harsh on this little data.</div>
+              </div>
+            )}
             <button onClick={runAudit} disabled={auditing} className="px-6 py-3 bg-amber-500 text-stone-950 font-sans text-sm hover:bg-amber-400 disabled:opacity-30 inline-flex items-center gap-2">
               {auditing ? <><Loader2 className="w-4 h-4 animate-spin" /> Running audit...</> : <><Stamp className="w-4 h-4" /> {audit ? 'Re-run quarterly audit' : 'Run quarterly audit'}</>}
             </button>
@@ -8652,6 +9350,20 @@ function DailyBriefingCard({ profile, stories, ideas, briefing, saveBriefing, se
   const day = today.getDay();
   const todayBriefing = briefing[todayKey];
   const [generating, setGenerating] = useState(false);
+
+  // Auto-generate the briefing on first dashboard visit each day — but ONLY if the
+  // user has enough source material to make a useful one. Otherwise show the manual
+  // generate button so they don't see a stale/empty briefing.
+  useEffect(() => {
+    if (todayBriefing || generating) return;
+    if (stories.length < 1) return; // need at least one story to anchor the briefing
+    if (!profile?.voice) return;     // need basic profile
+    const sessionFlag = `briefingAutoTried_${todayKey}`;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(sessionFlag)) return;
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(sessionFlag, '1');
+    generateBriefing();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayKey]);
 
   const generateBriefing = async () => {
     setGenerating(true);
@@ -8792,6 +9504,8 @@ const VOICE_LANGS = [
 ];
 
 function VoiceStoryCapture({ profile, months, onComplete, onCancel }) {
+  useEscape(onCancel);
+  useBodyScrollLock(true);
   const [lang, setLang] = useState('en-US');
   const [recording, setRecording] = useState(false);
   const [recognitionRef, setRecognitionRef] = useState(null);
@@ -9213,6 +9927,259 @@ Return ONLY valid JSON:
               </div>
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============= RESTORE PROFILE SNAPSHOT =============
+// Lets the user revert their profile to the last-saved version before the most
+// recent edit. Powered by the `_history:profile` row the API writes on every save.
+function RestoreProfileSnapshot({ saveProfile }) {
+  const [snapshot, setSnapshot] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [restoring, setRestoring] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (typeof window === 'undefined' || !window.storage) return;
+        const r = await window.storage.get('_history:profile');
+        if (r?.value) {
+          const parsed = JSON.parse(r.value);
+          if (parsed?.snapshot) setSnapshot(parsed);
+        }
+      } catch {}
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading || !snapshot) return null;
+
+  const restore = async () => {
+    if (typeof window === 'undefined') return;
+    if (!(await window.brandConfirm('Restore your profile to the previous version? Current edits will be overwritten.'))) return;
+    setRestoring(true);
+    try {
+      await saveProfile(snapshot.snapshot);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'success', message: 'Profile restored from previous version.' } }));
+      }
+    } catch {}
+    setRestoring(false);
+  };
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 p-6">
+      <div className="font-display text-xl text-amber-900 mb-2">Restore Previous Version</div>
+      <div className="font-sans text-sm text-amber-800 mb-4">
+        We keep one snapshot of your profile from before your last save — in case you regret a change.
+        Last snapshot taken {new Date(snapshot.savedAt).toLocaleString()}.
+      </div>
+      <button
+        onClick={restore}
+        disabled={restoring}
+        className="px-5 py-2.5 bg-amber-700 text-amber-50 font-sans text-sm disabled:opacity-30 inline-flex items-center gap-2"
+      >
+        {restoring ? <><Loader2 className="w-4 h-4 animate-spin" /> Restoring</> : <><Repeat className="w-4 h-4" /> Restore previous profile</>}
+      </button>
+    </div>
+  );
+}
+
+// ============= COMMAND PALETTE (Cmd/Ctrl+K) =============
+function CommandPalette({ setActiveView, viewTitles }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeIdx, setActiveIdx] = useState(0);
+  const inputRef = useRef(null);
+
+  useEscape(open ? () => setOpen(false) : null);
+  useBodyScrollLock(open);
+
+  // Global hotkey listener (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      setQuery('');
+      setActiveIdx(0);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [open]);
+
+  const allItems = useMemo(() => {
+    return Object.entries(viewTitles).map(([id, label]) => ({ id, label }));
+  }, [viewTitles]);
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return allItems;
+    return allItems.filter((i) => i.label.toLowerCase().includes(q) || i.id.toLowerCase().includes(q));
+  }, [allItems, query]);
+
+  // Reset active index when matches change
+  useEffect(() => { setActiveIdx(0); }, [query]);
+
+  const go = (id) => {
+    setActiveView(id);
+    setOpen(false);
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(matches.length - 1, i + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(0, i - 1)); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      const item = matches[activeIdx];
+      if (item) go(item.id);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-stone-950/70 backdrop-blur-sm z-[105] flex items-start justify-center pt-24 px-4"
+      onClick={() => setOpen(false)}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white max-w-xl w-full shadow-2xl border border-stone-200"
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
+        <div className="border-b border-stone-200 px-4 py-3 flex items-center gap-3">
+          <Search className="w-4 h-4 text-stone-400" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Jump to anything..."
+            className="flex-1 outline-none bg-transparent text-stone-900 placeholder:text-stone-400 text-sm"
+            aria-label="Command palette search"
+          />
+          <span className="font-mono text-[10px] uppercase tracking-wider text-stone-400 hidden sm:inline">ESC</span>
+        </div>
+        <div className="max-h-80 overflow-y-auto py-1">
+          {matches.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-stone-500 italic">No matches.</div>
+          ) : (
+            matches.map((m, i) => (
+              <button
+                key={m.id}
+                onClick={() => go(m.id)}
+                onMouseEnter={() => setActiveIdx(i)}
+                className={`w-full px-4 py-2.5 text-left flex items-center justify-between text-sm ${i === activeIdx ? 'bg-stone-100' : 'hover:bg-stone-50'}`}
+              >
+                <span className="text-stone-900">{m.label}</span>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-stone-400">{m.id}</span>
+              </button>
+            ))
+          )}
+        </div>
+        <div className="border-t border-stone-200 px-4 py-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-stone-500">
+          <span>↑↓ to navigate · ↵ to go</span>
+          <span className="hidden sm:inline">⌘K to toggle</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============= BOOKMARKLET MODAL =============
+// Generates a per-user "Save to Brand OS" bookmarklet. They drag it to their
+// bookmarks bar, then click it on any LinkedIn/X/Instagram DM page to capture.
+function BookmarkletModal({ onClose }) {
+  useEscape(onClose);
+  useBodyScrollLock(true);
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://your-app.vercel.app';
+
+  // The bookmarklet is one expression. Keep it short — bookmarks have URL-length caps.
+  const bookmarkletJs = `javascript:(function(){var t=window.getSelection().toString();if(!t){t=prompt('Paste the DM message text:');}if(!t)return;var n=prompt('Their name?','');var h=location.hostname;var s='Other';if(h.indexOf('linkedin')>-1)s='LinkedIn';else if(h.indexOf('twitter')>-1||h.indexOf('x.com')>-1)s='X / Twitter';else if(h.indexOf('instagram')>-1)s='Instagram';else if(h.indexOf('facebook')>-1)s='Facebook';var u='${origin}/platform?capture=conversation&text='+encodeURIComponent(t)+'&name='+encodeURIComponent(n||'')+'&source='+encodeURIComponent(s);window.open(u,'_blank');})();`;
+
+  return (
+    <div className="fixed inset-0 bg-stone-950/70 backdrop-blur-sm z-[80] flex items-start justify-center overflow-y-auto p-6" onClick={onClose}>
+      <div className="bg-white max-w-2xl w-full mt-12 mb-12" onClick={(e) => e.stopPropagation()}>
+        <div className="p-7 border-b border-stone-200 flex justify-between items-center">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-stone-500 mb-1">DM Quick-Capture</div>
+            <div className="font-display text-3xl font-light">Drag this to your bookmarks bar</div>
+          </div>
+          <button onClick={onClose} aria-label="Close"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-7 space-y-5">
+          <div className="bg-amber-50 border border-amber-200 p-5">
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-amber-800 mb-2">Why this exists</div>
+            <p className="font-sans text-sm text-stone-800 leading-relaxed">
+              The DM Hub is most valuable if you actually log every inbound conversation.
+              Instead of switching apps and copy-pasting, install this bookmarklet — click it
+              on LinkedIn/X/Instagram/Facebook and it pre-fills a new conversation here.
+            </p>
+          </div>
+
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-3">Step 1 — Show your bookmarks bar</div>
+            <div className="font-sans text-sm text-stone-700 leading-relaxed">
+              On most browsers: <kbd className="bg-stone-100 border border-stone-300 px-1.5 py-0.5 font-mono text-xs">⌘ + Shift + B</kbd> (Mac) or <kbd className="bg-stone-100 border border-stone-300 px-1.5 py-0.5 font-mono text-xs">Ctrl + Shift + B</kbd> (Windows).
+            </div>
+          </div>
+
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-3">Step 2 — Drag the link below to your bookmarks bar</div>
+            <div className="bg-stone-50 border-2 border-dashed border-stone-300 p-6 text-center">
+              <a
+                href={bookmarkletJs}
+                onClick={(e) => { e.preventDefault(); }}
+                className="inline-block px-6 py-3 bg-stone-900 text-stone-50 font-sans text-sm hover:bg-stone-800 cursor-grab active:cursor-grabbing"
+                draggable="true"
+              >
+                📌 Save to Brand OS
+              </a>
+              <div className="font-sans text-xs text-stone-500 mt-3 italic">
+                ↑ Click and drag this button to your bookmarks bar. Don't just click it.
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-3">Step 3 — Use it</div>
+            <ol className="font-sans text-sm text-stone-700 space-y-2 list-decimal pl-5 leading-relaxed">
+              <li>Open a DM on LinkedIn, X, or Instagram.</li>
+              <li>Highlight the message text (optional — you can paste later if you skip this).</li>
+              <li>Click <strong>📌 Save to Brand OS</strong> in your bookmarks bar.</li>
+              <li>It opens Brand OS in a new tab with the DM pre-filled. Add the name, save, done.</li>
+            </ol>
+          </div>
+
+          <div className="bg-stone-100 border-l-4 border-stone-900 p-4">
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-stone-700 mb-2">If drag-and-drop doesn't work</div>
+            <p className="font-sans text-xs text-stone-700 leading-relaxed mb-2">
+              Some browsers block dragging `javascript:` URLs. Work around it manually:
+            </p>
+            <ol className="font-sans text-xs text-stone-700 list-decimal pl-5 space-y-1">
+              <li>Right-click your bookmarks bar → <em>Add page</em></li>
+              <li>Name: <strong>📌 Save to Brand OS</strong></li>
+              <li>URL: paste this entire blob:</li>
+            </ol>
+            <textarea
+              readOnly
+              value={bookmarkletJs}
+              onClick={(e) => e.target.select()}
+              className="mt-3 w-full bg-white border border-stone-300 px-3 py-2 font-mono text-[10px] text-stone-700 leading-relaxed"
+              rows={4}
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -48,3 +48,38 @@ drop trigger if exists user_data_set_updated_at on public.user_data;
 create trigger user_data_set_updated_at
   before update on public.user_data
   for each row execute function public.set_updated_at();
+
+-- =========================================================================
+-- STORAGE BUCKET for Proof Vault uploads
+-- =========================================================================
+-- Run this to enable image uploads (screenshots, testimonials, etc.) in the Proof Vault.
+-- Without it, uploads will fail with a 500 from /api/upload.
+
+-- Create the public-read bucket if it doesn't exist
+insert into storage.buckets (id, name, public)
+values ('proof', 'proof', true)
+on conflict (id) do nothing;
+
+-- Users may upload to a path that starts with their own user_id
+drop policy if exists "Users upload own proof" on storage.objects;
+create policy "Users upload own proof"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'proof'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- Users may delete their own uploads
+drop policy if exists "Users delete own proof" on storage.objects;
+create policy "Users delete own proof"
+  on storage.objects for delete
+  using (
+    bucket_id = 'proof'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- Public read on the bucket (anyone with the URL can fetch the image)
+drop policy if exists "Anyone reads proof" on storage.objects;
+create policy "Anyone reads proof"
+  on storage.objects for select
+  using (bucket_id = 'proof');
