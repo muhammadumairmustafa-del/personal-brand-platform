@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import PersonalBrandPlatform from './PersonalBrandPlatform';
+import SaveStatus from './SaveStatus';
 
 // Install shims synchronously on first render so the platform's loadData()
 // finds window.storage and the fetch() patch already in place.
@@ -43,6 +44,12 @@ function installShims() {
       }
     },
     set: async (key, value) => {
+      const fireSave = (status) => {
+        try {
+          window.dispatchEvent(new CustomEvent('brand-save', { detail: { key, status, at: Date.now() } }));
+        } catch {}
+      };
+      fireSave('saving');
       try {
         const r = await fetch(`/api/data/${encodeURIComponent(key)}`, {
           method: 'PUT',
@@ -54,10 +61,14 @@ function installShims() {
           const err = await r.json().catch(() => ({}));
           console.error('storage.set failed:', err);
           fireToast('error', err.error || `Save failed (HTTP ${r.status})`);
+          fireSave('error');
+          return;
         }
+        fireSave('saved');
       } catch (e) {
         console.error('storage.set error:', e);
         fireToast('error', 'Connection issue — your last change may not have saved.');
+        fireSave('error');
       }
     },
     delete: async (key) => {
@@ -246,6 +257,7 @@ export default function PlatformWrapper({ user }) {
           {(user?.email || '?').slice(0, 1)}
         </div>
         <span className="font-sans text-xs text-stone-700 hidden sm:inline">{user?.email}</span>
+        <span className="hidden sm:inline border-l border-stone-200 pl-2 ml-1"><SaveStatus /></span>
         <button
           onClick={signOut}
           disabled={signingOut}

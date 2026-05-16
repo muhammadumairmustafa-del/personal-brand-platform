@@ -112,13 +112,37 @@ export async function POST(request) {
     8000
   );
 
+  // ─── Inject voice fingerprint into system prompt ───
+  // The Brand DNA Lab stores a "voice fingerprint" describing how the user writes
+  // (tone, sentence rhythm, vocabulary). Prepending it makes every AI output sound
+  // like the user instead of a generic AI voice — biggest single quality lever.
+  let voicePreamble = '';
+  try {
+    const { data: dnaRow } = await supabase
+      .from('user_data')
+      .select('value')
+      .eq('user_id', user.id)
+      .eq('key', 'dna')
+      .maybeSingle();
+    const fp = dnaRow?.value?.voice?.fingerprint;
+    if (fp && typeof fp === 'string' && fp.trim().length > 20) {
+      voicePreamble = `The author writes in this voice: ${fp.trim()}\n\nMatch this voice in tone, sentence rhythm, and vocabulary. Don't sound like a generic AI assistant.\n\n`;
+    }
+  } catch (e) {
+    console.error('Voice fingerprint lookup failed:', e);
+  }
+
   // ─── Forward to Anthropic ───
   // Note: we IGNORE body.model entirely. Server pins the model.
+  const systemCombined = voicePreamble
+    ? voicePreamble + (body.system || '')
+    : (body.system || '');
+
   const payload = {
     model: MODEL,
     max_tokens: maxTokens,
     messages: body.messages,
-    ...(body.system ? { system: body.system } : {})
+    ...(systemCombined ? { system: systemCombined } : {})
   };
 
   try {

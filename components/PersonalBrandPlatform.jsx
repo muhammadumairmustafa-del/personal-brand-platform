@@ -1,6 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import ViewErrorBoundary from './ViewErrorBoundary';
+import OnboardingMeter from './OnboardingMeter';
+import ExportButton from './ExportButton';
+import VersionHistoryDropdown from './VersionHistoryDropdown';
+import { MOBILE_LIST_PAGE } from '@/lib/config';
 import {
   Compass, BookOpen, Sparkles, Calendar, TrendingUp, Target,
   Mic, Zap, ArrowRight, Plus, Edit3, Trash2, Save, X, 
@@ -210,7 +215,7 @@ export default function PersonalBrandPlatform() {
         
         for (const k of keys) {
           try {
-            const r = await window.storage.get(`brand:${k}`);
+            const r = await window.storage.get(k);
             if (r?.value) setters[k](JSON.parse(r.value));
             else if (defaults[k] !== undefined) setters[k](defaults[k]);
           } catch (e) {
@@ -218,7 +223,7 @@ export default function PersonalBrandPlatform() {
           }
         }
         
-        const profileResult = await window.storage.get('brand:profile').catch(() => null);
+        const profileResult = await window.storage.get('profile').catch(() => null);
         if (!profileResult?.value) setShowOnboarding(true);
       } catch (e) {
         console.error('Load error:', e);
@@ -231,7 +236,7 @@ export default function PersonalBrandPlatform() {
   const saver = (key, setter) => async (val) => {
     setter(val);
     try {
-      await window.storage.set(`brand:${key}`, JSON.stringify(val));
+      await window.storage.set(key, JSON.stringify(val));
     } catch (e) { console.error('Save error:', e); }
   };
 
@@ -313,6 +318,7 @@ export default function PersonalBrandPlatform() {
       />
 
       <main className={`${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'} ml-0 pt-14 lg:pt-0 min-h-screen transition-all duration-300`}>
+        <ViewErrorBoundary viewName={viewTitles[activeView] || activeView} key={activeView}>
         {activeView === 'dashboard' && (
           <Dashboard
             profile={profile} stories={stories} contentPieces={contentPieces}
@@ -412,6 +418,7 @@ export default function PersonalBrandPlatform() {
         {activeView === 'profile' && (
           <ProfileSettings profile={profile} saveProfile={saveProfile} setShowOnboarding={setShowOnboarding} />
         )}
+        </ViewErrorBoundary>
       </main>
     </div>
   );
@@ -567,7 +574,9 @@ function Onboarding({ onComplete }) {
     // The draft is already auto-saved on every change — this just gives the user
     // a deliberate exit point. They can come back later by re-loading the platform.
     if (typeof window !== 'undefined') {
-      alert("Your progress is saved. Close this tab — when you return, you'll pick up where you left off.");
+      window.dispatchEvent(new CustomEvent('brand-toast', {
+        detail: { type: 'success', message: "Your progress is saved. Close this tab — when you return, you'll pick up where you left off." }
+      }));
     }
   };
 
@@ -1479,6 +1488,11 @@ function Dashboard({ profile, stories, contentPieces, funnels, calendar, setActi
         </p>
       </div>
 
+      <OnboardingMeter
+        state={{ profile, dna, icps, stories, hooks, content: contentPieces }}
+        setActiveView={setActiveView}
+      />
+
       {/* First-time user welcome state — shows when there's nothing to display.
           Replaces a graveyard of zeros with a single, clear next action. */}
       {stories.length === 0 && contentPieces.length === 0 ? (
@@ -1841,6 +1855,7 @@ function StoryVault({ stories, saveStories, profile }) {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('recent');
   const [viewMode, setViewMode] = useState('grid');
+  const [mobilePages, setMobilePages] = useState(1);
 
   // Detect Web Speech API support upfront so we can show users the right message
   // BEFORE they click and hit a dead button.
@@ -2042,30 +2057,53 @@ function StoryVault({ stories, saveStories, profile }) {
         />
       )}
 
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map(story => (
-            <StoryCard
-              key={story.id}
-              story={story}
-              onEdit={() => { setEditing(story); setShowForm(true); }}
-              onDelete={async () => { if (await window.brandConfirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
-              onUpdate={(updated) => saveStories(stories.map(s => s.id === updated.id ? updated : s))}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white border border-stone-200 divide-y divide-stone-200">
-          {filtered.map(story => (
-            <StoryRow
-              key={story.id}
-              story={story}
-              onEdit={() => { setEditing(story); setShowForm(true); }}
-              onDelete={async () => { if (await window.brandConfirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
-            />
-          ))}
-        </div>
-      )}
+      {(() => {
+        const isMobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 1024px)').matches;
+        const cap = isMobile ? mobilePages * MOBILE_LIST_PAGE : filtered.length;
+        const visible = filtered.slice(0, cap);
+        const hasMore = isMobile && visible.length < filtered.length;
+        return (
+          <>
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {visible.map(story => (
+                  <StoryCard
+                    key={story.id}
+                    story={story}
+                    onEdit={() => { setEditing(story); setShowForm(true); }}
+                    onDelete={async () => { if (await window.brandConfirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
+                    onUpdate={(updated) => saveStories(stories.map(s => s.id === updated.id ? updated : s))}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white border border-stone-200 divide-y divide-stone-200">
+                {visible.map(story => (
+                  <StoryRow
+                    key={story.id}
+                    story={story}
+                    onEdit={() => { setEditing(story); setShowForm(true); }}
+                    onDelete={async () => { if (await window.brandConfirm('Delete this story permanently? This cannot be undone.')) saveStories(stories.filter(s => s.id !== story.id)); }}
+                  />
+                ))}
+              </div>
+            )}
+            {hasMore && (
+              <div className="mt-6 flex flex-col items-center gap-2">
+                <div className="font-mono text-[10px] uppercase tracking-wider text-stone-500">
+                  Showing {visible.length} of {filtered.length} stories
+                </div>
+                <button
+                  onClick={() => setMobilePages(p => p + 1)}
+                  className="px-5 py-2 border border-stone-300 hover:border-stone-500 text-sm text-stone-700"
+                >
+                  Load more
+                </button>
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }
@@ -2197,7 +2235,7 @@ Help refine this story. Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 1000, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -2386,7 +2424,7 @@ Build a deep, specific ICP. Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 2000, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -2769,7 +2807,7 @@ Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 1500, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -3051,7 +3089,7 @@ Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2500, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 2500, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -3110,7 +3148,7 @@ Return ONLY valid JSON:
         description="Turn each story into Pain / Prize / News content across platforms. AI drafts. You ship."
       />
 
-      <div className="border-b border-stone-200 mb-8">
+      <div className="border-b border-stone-200 mb-8 flex justify-between items-end">
         <div className="flex gap-8">
           <button onClick={() => setActiveTab('generate')} className={`pb-3 font-sans text-sm flex items-center gap-2 border-b-2 -mb-px ${activeTab === 'generate' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500'}`}>
             <Sparkles className="w-4 h-4" /> Generate
@@ -3118,6 +3156,9 @@ Return ONLY valid JSON:
           <button onClick={() => setActiveTab('library')} className={`pb-3 font-sans text-sm flex items-center gap-2 border-b-2 -mb-px ${activeTab === 'library' ? 'border-stone-900 text-stone-900' : 'border-transparent text-stone-500'}`}>
             <Layers className="w-4 h-4" /> Library ({contentPieces.length})
           </button>
+        </div>
+        <div className="pb-2">
+          <VersionHistoryDropdown storageKey="content" onRestore={saveContent} />
         </div>
       </div>
 
@@ -3487,7 +3528,7 @@ Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 3000, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 3000, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -3838,7 +3879,7 @@ function FunnelBuilder({ funnels, saveFunnels, profile }) {
     }
   ];
 
-  const useTemplate = (t) => {
+  const applyTemplate = (t) => {
     const newFunnel = {
       id: Date.now(),
       name: t.name,
@@ -3879,7 +3920,7 @@ function FunnelBuilder({ funnels, saveFunnels, profile }) {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => useTemplate(t)} className="w-full px-4 py-2 bg-stone-900 text-stone-50 font-sans text-sm">
+                <button onClick={() => applyTemplate(t)} className="w-full px-4 py-2 bg-stone-900 text-stone-50 font-sans text-sm">
                   Use this template
                 </button>
               </div>
@@ -4675,8 +4716,7 @@ Otherwise just keep asking great questions. Be human, warm, but sharp. Push them
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          model: "claude-sonnet-4-20250514", 
-          max_tokens: 1500, 
+                    max_tokens: 1500, 
           system: systemPrompt,
           messages: newMessages.map(m => ({ role: m.role, content: m.content }))
         })
@@ -4957,12 +4997,7 @@ function ProfileSettings({ profile, saveProfile, setShowOnboarding }) {
                 Download everything Brand OS knows about you as a single JSON file — profile, stories, content, ICPs, conversations, all of it.
                 Yours to keep, move, or import elsewhere.
               </div>
-              <a
-                href="/api/export"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-stone-900 text-stone-50 font-sans text-sm hover:bg-stone-800"
-              >
-                <Download className="w-4 h-4" /> Download my data (.json)
-              </a>
+              <ExportButton className="inline-flex items-center gap-2 px-5 py-2.5 bg-stone-900 text-stone-50 font-sans text-sm hover:bg-stone-800 disabled:opacity-50" />
             </div>
 
             <div className="bg-amber-50 border border-amber-200 p-6">
@@ -5044,7 +5079,7 @@ Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 1500, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -5394,7 +5429,7 @@ Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 2000, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -6101,7 +6136,7 @@ Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 1500, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -6244,7 +6279,7 @@ Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 4000, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -6376,7 +6411,7 @@ Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 3000, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 3000, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -6517,7 +6552,7 @@ Return ONLY valid JSON:
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 3000, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({max_tokens: 3000, messages: [{ role: "user", content: prompt }] })
       });
       const data = await response.json();
       const text = data.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -7070,7 +7105,9 @@ function IdeaInbox({ ideas, saveIdeas, stories, saveStories, profile }) {
 
   const startRecording = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Voice capture requires Chrome, Edge, or Safari. Just type instead.');
+      window.dispatchEvent(new CustomEvent('brand-toast', {
+        detail: { type: 'info', message: 'Voice capture requires Chrome, Edge, or Safari. Just type instead.' }
+      }));
       return;
     }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -7141,7 +7178,7 @@ Return ONLY valid JSON:
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ max_tokens: 800, messages: [{ role: 'user', content: prompt }] })
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -7550,7 +7587,7 @@ Return ONLY valid JSON:
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -7835,7 +7872,7 @@ Return ONLY valid JSON:
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -7990,7 +8027,7 @@ Return ONLY valid JSON:
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ max_tokens: 4000, messages: [{ role: 'user', content: prompt }] })
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -8213,7 +8250,7 @@ Return ONLY valid JSON:
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
       });
       const d = await r.json();
       const t = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -8448,7 +8485,7 @@ Return ONLY the section content (no JSON, no headers, no quotes around it). Writ
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ max_tokens: 1500, messages: [{ role: 'user', content: prompt }] })
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('').trim();
@@ -8483,7 +8520,7 @@ Return ONLY valid JSON:
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 3000, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ max_tokens: 3000, messages: [{ role: 'user', content: prompt }] })
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -8864,28 +8901,59 @@ function ProofForm({ proof, onSave, onCancel }) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
 
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Client-side pre-flight: catch oversized/wrong-MIME files BEFORE the round-trip.
+    const { UPLOAD_MAX_BYTES, UPLOAD_ALLOWED_MIME } = await import('@/lib/config');
+    if (!UPLOAD_ALLOWED_MIME.includes(file.type)) {
+      window.dispatchEvent(new CustomEvent('brand-toast', {
+        detail: { type: 'error', message: `Unsupported file type. Use PNG, JPG, GIF, WebP, or SVG.` }
+      }));
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    if (file.size > UPLOAD_MAX_BYTES) {
+      const mb = (UPLOAD_MAX_BYTES / 1024 / 1024).toFixed(0);
+      window.dispatchEvent(new CustomEvent('brand-toast', {
+        detail: { type: 'error', message: `Too large. Max ${mb} MB — yours is ${(file.size / 1024 / 1024).toFixed(1)} MB.` }
+      }));
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+
     setUploading(true);
+    setUploadProgress(0);
     try {
       const form = new FormData();
       form.append('file', file);
-      const r = await fetch('/api/upload', { method: 'POST', body: form, credentials: 'include' });
-      const data = await r.json();
-      if (!r.ok) {
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: data.error || 'Upload failed' } }));
-        }
-      } else {
-        setP({ ...p, imageUrl: data.url });
-      }
+      // XHR so we can read upload progress
+      const data = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/upload');
+        xhr.withCredentials = true;
+        xhr.upload.addEventListener('progress', (ev) => {
+          if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+        });
+        xhr.onload = () => {
+          try {
+            const body = JSON.parse(xhr.responseText || '{}');
+            if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+            else reject(new Error(body.error || `HTTP ${xhr.status}`));
+          } catch { reject(new Error(`HTTP ${xhr.status}`)); }
+        };
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.send(form);
+      });
+      setP({ ...p, imageUrl: data.url });
     } catch (err) {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: 'Upload failed: ' + err.message } }));
-      }
+      window.dispatchEvent(new CustomEvent('brand-toast', { detail: { type: 'error', message: 'Upload failed: ' + err.message } }));
     } finally {
       setUploading(false);
+      setUploadProgress(0);
       if (fileRef.current) fileRef.current.value = '';
     }
   };
@@ -8939,9 +9007,14 @@ function ProofForm({ proof, onSave, onCancel }) {
               htmlFor="proof-file-input"
               className={`px-4 py-2 bg-stone-900 border border-stone-700 hover:border-stone-500 font-sans text-sm inline-flex items-center gap-2 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
             >
-              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</> : <><ImagePlus className="w-4 h-4" /> Upload image</>}
+              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading {uploadProgress}%</> : <><ImagePlus className="w-4 h-4" /> Upload image</>}
             </label>
             <span className="font-sans text-xs text-stone-500">Or paste a URL below.</span>
+          </div>
+        )}
+        {uploading && (
+          <div className="mt-2 h-1.5 bg-stone-800 overflow-hidden">
+            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${uploadProgress}%` }} />
           </div>
         )}
         {!p.imageUrl && (
@@ -8978,6 +9051,7 @@ function PublicProfileBuilder({ publicProfile, savePublicProfile, profile, dna, 
   };
 
   const featuredOptinId = p.featuredOptinId;
+  const [copied, setCopied] = useState(false);
 
   if (previewMode) {
     return <PublicProfilePreview p={p} profile={profile} dna={dna} stories={stories.filter(s => featuredStoryIds.includes(s.id))} optin={optins.find(o => o.id === parseInt(featuredOptinId))} onClose={() => setPreviewMode(false)} />;
@@ -8988,7 +9062,6 @@ function PublicProfileBuilder({ publicProfile, savePublicProfile, profile, dna, 
   const liveUrl = (typeof window !== 'undefined' && p.username)
     ? `${window.location.origin}/u/${encodeURIComponent(p.username)}`
     : null;
-  const [copied, setCopied] = useState(false);
   const copyLiveUrl = () => {
     if (!liveUrl) return;
     try {
@@ -9295,7 +9368,7 @@ Return ONLY valid JSON:
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -9467,7 +9540,7 @@ Return ONLY valid JSON:
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({ max_tokens: 800, messages: [{ role: 'user', content: prompt }] })
       });
       const d = await r.json();
       const text = d.content.filter(c => c.type === 'text').map(c => c.text).join('');
@@ -9708,7 +9781,6 @@ Return ONLY valid JSON:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
           max_tokens: 2000,
           messages: [{ role: 'user', content: prompt }]
         })
